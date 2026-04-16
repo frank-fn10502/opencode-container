@@ -15,3 +15,5 @@
 # Human-readable generated reports are kept locally.
 opencode-output/*
 !opencode-output/.gitkeep
+
+.tmp/
