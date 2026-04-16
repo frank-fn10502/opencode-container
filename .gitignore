@@ -11,3 +11,7 @@
 .devcontainer/config/package-lock.json
 .devcontainer/config/bun.lock
 .devcontainer/config/.gitignore
+
+# Human-readable generated reports are kept locally.
+opencode-output/*
+!opencode-output/.gitkeep

@@ -70,6 +70,45 @@ docker run --rm -it \
 
 如果本機還沒有 `localhost/opencode-dev:local`，VS Code / Dev Containers 也會因為 `pull_policy: never` 而停止，不會去 Docker Hub 嘗試拉取。
 
+## 觸發 OpenCode 檢查 C++ 程式碼
+
+這個 script 會在 container 內檢查專案中的 C++ 檔案，回報最後修改時間，並嘗試編譯/執行含有 `main()` 的 C++ source。編譯與執行都發生在 container 的 `/tmp`，不會在專案資料夾產生 build artifact。
+
+script 會使用獨立的 `opencode-cpp-runner` service 與獨立 Docker named volumes，避免和你正在使用的主要 `opencode` container 共用 OpenCode DB/state。
+
+每次執行都會把人類可讀的輸出寫到 `opencode-output/`：
+
+- `*-cpp-input.json`：送給 opencode 的 C++ 檢查摘要
+- `*-opencode.log`：opencode 的完整 stdout/stderr，以及等待 heartbeat
+
+```bash
+python3 .devcontainer/scripts/inspect-cpp-with-opencode.py
+```
+
+可指定模型與 timeout：
+
+```bash
+python3 .devcontainer/scripts/inspect-cpp-with-opencode.py --model ollama/qwen3:8b --timeout 180
+```
+
+可指定輸出資料夾：
+
+```bash
+python3 .devcontainer/scripts/inspect-cpp-with-opencode.py --output-dir opencode-output
+```
+
+手動驗證 `opencode run` 時，若使用 `--file`，需要在檔案參數後加上 `--`，避免後面的 prompt 被當成另一個 file：
+
+```bash
+docker compose -f .devcontainer/compose.yaml run --rm --no-deps -T opencode-cpp-runner \
+  opencode --print-logs --log-level DEBUG run \
+  --model ollama/qwen3.5:9b \
+  --dir /workspace \
+  --file /workspace/opencode-output/20260416T114604-cpp-input.json \
+  -- \
+  "請根據附加的 JSON 檔案，用繁體中文簡短回報 C++ 程式碼、最後修改時間、編譯與執行結果。"
+```
+
 ## 預設模型設定
 
 目前 `.devcontainer/config/opencode.json` 預設使用：

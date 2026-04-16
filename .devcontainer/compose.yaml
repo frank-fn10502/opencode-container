@@ -15,6 +15,23 @@ services:
       - opencode-home:/home/node/.local/share/opencode
       - opencode-local-state:/home/node/.local/state
 
+  opencode-cpp-runner:
+    image: localhost/opencode-dev:local
+    pull_policy: never
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - ..:/workspace
+      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
+      - opencode-cpp-runner-home:/home/node/.local/share/opencode
+      - opencode-cpp-runner-local-state:/home/node/.local/state
+
 volumes:
   opencode-home:
   opencode-local-state:
+  opencode-cpp-runner-home:
+  opencode-cpp-runner-local-state:
