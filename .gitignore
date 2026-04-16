@@ -4,14 +4,10 @@
 # Editor / tooling
 .vscode/
 
-# OpenCode runtime state kept on bind mounts
-.devcontainer/state/opencode-home/*
-!.devcontainer/state/opencode-home/.gitkeep
-.devcontainer/state/node-local-state/*
-!.devcontainer/state/node-local-state/.gitkeep
-
-# OpenCode may bootstrap plugin dependencies beside opencode.json
+# OpenCode runtime artifacts should not be stored in this repository.
+.devcontainer/state/
 .devcontainer/config/node_modules/
 .devcontainer/config/package.json
 .devcontainer/config/package-lock.json
 .devcontainer/config/bun.lock
+.devcontainer/config/.gitignore

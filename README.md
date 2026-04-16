@@ -18,7 +18,8 @@
 - `.devcontainer/compose.yaml`：只負責從 local image 啟動 container，不負責 build
 - `.devcontainer/config/opencode.json`：預設 OpenCode 設定，已改成使用 Ollama
 - `.devcontainer/scripts/build-image.sh`：建 image 的 bash script
-- `.devcontainer/state/opencode-home/`：bind mount 的 OpenCode 本地資料目錄
+
+OpenCode 的 DB、logs、prompt history 等 runtime state 使用 Docker named volumes，不會寫入專案資料夾。
 
 ## 建立 image
 
@@ -54,8 +55,9 @@ docker compose -f .devcontainer/compose.yaml run --rm opencode bash
 bash .devcontainer/scripts/build-image.sh
 docker run --rm -it \
   -v "$(pwd):/workspace" \
-  -v "$(pwd)/.devcontainer/config:/home/node/.config/opencode" \
-  -v "$(pwd)/.devcontainer/state/opencode-home:/home/node/.local/share/opencode" \
+  -v "$(pwd)/.devcontainer/config/opencode.json:/home/node/.config/opencode/opencode.json:ro" \
+  -v opencode-home:/home/node/.local/share/opencode \
+  -v opencode-local-state:/home/node/.local/state \
   --add-host host.docker.internal:host-gateway \
   localhost/opencode-dev:local
 ```

@@ -11,6 +11,10 @@ services:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
     volumes:
       - ..:/workspace
-      - ./config:/home/node/.config/opencode
-      - ./state/opencode-home:/home/node/.local/share/opencode
-      - ./state/node-local-state:/home/node/.local/state
+      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
+      - opencode-home:/home/node/.local/share/opencode
+      - opencode-local-state:/home/node/.local/state
+
+volumes:
+  opencode-home:
+  opencode-local-state:
