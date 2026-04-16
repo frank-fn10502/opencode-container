@@ -1,0 +1,24 @@
+{
+  "name": "opencode-dev",
+  "dockerComposeFile": [
+    "compose.yaml"
+  ],
+  "service": "opencode",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+  "overrideCommand": true,
+  "containerEnv": {
+    "OLLAMA_API_KEY": "${localEnv:OLLAMA_API_KEY}"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "postCreateCommand": "opencode --help >/dev/null"
+}

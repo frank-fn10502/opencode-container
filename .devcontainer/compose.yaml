@@ -1,0 +1,16 @@
+services:
+  opencode:
+    image: localhost/opencode-dev:local
+    pull_policy: never
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - ..:/workspace
+      - ./config:/home/node/.config/opencode
+      - ./state/opencode-home:/home/node/.local/share/opencode
+      - ./state/node-local-state:/home/node/.local/state
