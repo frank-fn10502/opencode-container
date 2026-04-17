@@ -18,6 +18,8 @@
 - `.devcontainer/compose.yaml`：只負責從 local image 啟動 container，不負責 build
 - `.devcontainer/config/opencode.json`：預設 OpenCode 設定，已改成使用 Ollama
 - `.devcontainer/scripts/build-image.sh`：建 image 的 bash script
+- `.devcontainer/scripts/opencode-dev.sh`：日常入口，用短生命週期 container 掛載指定專案
+- `.devcontainer/scripts/init-opencode-dev.sh`：把 `opencode-dev` function 註冊到 shell profile
 
 OpenCode 的 DB、logs、prompt history 等 runtime state 使用 Docker named volumes，不會寫入專案資料夾。
 
@@ -35,32 +37,87 @@ bash .devcontainer/scripts/build-image.sh my-opencode:dev
 
 預設 tag 為 `localhost/opencode-dev:local`。
 
+## 初始化 opencode-dev 指令
+
+第一次使用時先建立 image，然後執行 init script：
+
+```bash
+bash .devcontainer/scripts/build-image.sh
+bash .devcontainer/scripts/init-opencode-dev.sh
+```
+
+script 會：
+
+- 在目前 shell 對應的 profile 註冊 `opencode-dev` function
+- 讓 `opencode-dev` 呼叫這個 repo 裡的 `.devcontainer/scripts/opencode-dev.sh`
+
+註冊後請重新開啟 terminal，或依照 script 輸出 `source` 對應 profile。
+
+OpenCode 狀態固定保存在 `opencode-home` 和 `opencode-state` 兩個 Docker external volumes，會保留 OAuth、session、logs 和其他 runtime data。
+
+## 使用 opencode-dev
+
+在專案目錄裡直接執行：
+
+```bash
+opencode-dev
+```
+
+這會啟動一個短生命週期 container，把目前目錄掛到 `/workspace`，並在 container 裡執行 `opencode`。`opencode` 結束後 container 會自動移除，OpenCode auth/state 會保留在 external volumes。
+
+也可以指定任意 host 專案路徑；沒有指定路徑時才使用目前 `pwd`：
+
+```bash
+opencode-dev /path/to/project-a
+opencode-dev ../project-b
+opencode-dev /path/to/project-c -- --help
+```
+
+如果指定的路徑還不存在，script 會建立該目錄。每次只會把該目錄掛到 `/workspace`，安全邊界就是這次指定的專案資料夾。
+
+script 固定使用 container name `opencode-dev`。如果同名 container 已存在，會詢問是否關閉並移除舊 container；拒絕時會保留既有 container 並結束。這讓同一時間最多只有一個 `opencode-dev` container。
+
+常用指令：
+
+```bash
+opencode-dev                    # 掛載目前目錄並執行 opencode
+opencode-dev /path/to/project   # 掛載指定目錄並執行 opencode
+opencode-dev shell /path/to/project
+opencode-dev stop               # 停止並移除現有 opencode-dev container
+opencode-dev status             # 查看現有 opencode-dev container
+```
+
+不要手動刪除 `opencode-home` 和 `opencode-state`，否則 OAuth 與 session state 會消失。
+
 ## 用 Docker Compose 啟動 OpenCode
 
 必須先 build image，因為 `compose` 已被設定成只使用本機 image，且禁止 pull。
 
 ```bash
-docker compose -f .devcontainer/compose.yaml run --rm opencode
+docker compose -p opencode-dev -f .devcontainer/compose.yaml up -d
+docker compose -p opencode-dev -f .devcontainer/compose.yaml exec opencode bash
 ```
 
-如果你只想進容器 shell：
-
-```bash
-docker compose -f .devcontainer/compose.yaml run --rm opencode bash
-```
+這個 compose 入口主要保留給 VS Code Dev Containers 或手動除錯；日常使用建議使用 `opencode-dev`，因為它可以針對任意目錄建立短生命週期 container。
 
 ## 直接用 Docker 啟動
 
 ```bash
 bash .devcontainer/scripts/build-image.sh
-docker run --rm -it \
-  -v "$(pwd):/workspace" \
+
+docker volume create opencode-home
+docker volume create opencode-state
+
+docker run --rm -it --name opencode-dev \
+  -v "/path/to/project:/workspace" \
   -v "$(pwd)/.devcontainer/config/opencode.json:/home/node/.config/opencode/opencode.json:ro" \
   -v opencode-home:/home/node/.local/share/opencode \
-  -v opencode-local-state:/home/node/.local/state \
+  -v opencode-state:/home/node/.local/state \
   --add-host host.docker.internal:host-gateway \
   localhost/opencode-dev:local
 ```
+
+直接使用 Docker 時，同一時間仍建議只保留一個 `opencode-dev` container。
 
 ## 用 VS Code Dev Container 開啟
 

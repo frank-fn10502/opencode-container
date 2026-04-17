@@ -1,6 +1,7 @@
 services:
   opencode:
     image: localhost/opencode-dev:local
+    container_name: opencode-dev
     pull_policy: never
     working_dir: /workspace
     stdin_open: true
@@ -13,7 +14,7 @@ services:
       - ..:/workspace
       - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
       - opencode-home:/home/node/.local/share/opencode
-      - opencode-local-state:/home/node/.local/state
+      - opencode-state:/home/node/.local/state
 
   opencode-cpp-runner:
     image: localhost/opencode-dev:local
@@ -32,6 +33,10 @@ services:
 
 volumes:
   opencode-home:
-  opencode-local-state:
+    external: true
+    name: opencode-home
+  opencode-state:
+    external: true
+    name: opencode-state
   opencode-cpp-runner-home:
   opencode-cpp-runner-local-state:
