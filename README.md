@@ -15,7 +15,7 @@ image tar 預設放在專案根目錄：
 
 tar 只能放在 `.docker_imgs/` 這一層，不支援其他位置。
 
-如果本機 Docker 已經有 `localhost/opencode-dev-yuta:*` image，可以不放 tar；init 會直接使用既有 image。
+如果本機 Docker 已經有 `.devcontainer/image.profile` 指定的 image（通常是 exact `localhost/opencode-dev-yuta:${IMAGE_TAG}`），可以不放 tar；init 會直接使用既有 image。
 
 ## 安裝
 
@@ -50,6 +50,8 @@ opencode-dev ../other-project
 ```
 
 如果指定的資料夾不存在，script 會建立它。每次啟動只會把該資料夾掛到 container 的 `/workspace`。
+
+容器預設使用 `opencode` 使用者。啟動時會自動檢查 `/workspace` 的擁有者 UID/GID；若與 `opencode` 不一致，entrypoint 會在容器內動態調整 `opencode` 的 UID/GID 後再執行主程式，降低 host bind mount 的權限衝突。
 
 ## 常用指令
 
@@ -100,10 +102,24 @@ opencode-dev --uninstall
 
 ## 維護者
 
-從 Dockerfile build 並打包 image tar：
+從預設 CA 模式 Dockerfile build 並打包 image tar：
 
 ```bash
 bash .devcontainer/scripts/build-image.sh
+```
+
+如果公司需要匯入 CA，使用 build-arg 傳入 base64：
+
+```bash
+bash .devcontainer/scripts/build-image.sh \
+	--dockerfile Dockerfile \
+	--build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
+```
+
+如果要使用全面放寬 SSL 檢查的模式（apt/npm/pip/curl/wget），改用 insecure 版本：
+
+```bash
+bash .devcontainer/scripts/build-image.sh --dockerfile Dockerfile.insecure
 ```
 
 `build-image.sh` 會自動更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 tar 到：

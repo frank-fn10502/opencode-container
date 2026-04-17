@@ -12,9 +12,9 @@ services:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
-      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
-      - opencode-home-yuta:/home/node/.local/share/opencode
-      - opencode-state-yuta:/home/node/.local/state
+      - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - opencode-home-yuta:/home/opencode/.local/share/opencode
+      - opencode-state-yuta:/home/opencode/.local/state
 
   opencode-cpp-runner:
     image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
@@ -27,9 +27,9 @@ services:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
-      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
-      - opencode-cpp-runner-home-yuta:/home/node/.local/share/opencode
-      - opencode-cpp-runner-local-state-yuta:/home/node/.local/state
+      - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - opencode-cpp-runner-home-yuta:/home/opencode/.local/share/opencode
+      - opencode-cpp-runner-local-state-yuta:/home/opencode/.local/state
 
 volumes:
   opencode-home-yuta:

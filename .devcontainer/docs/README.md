@@ -243,6 +243,8 @@ volumes:
 
 `opencode-dev` script 只負責把使用者輸入的 path 解析成絕對路徑，然後在執行 Compose 時設定 `OPENCODE_DEV_WORKSPACE`。container image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
 
+image 啟動時會先進入 entrypoint。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 在大多數情境下都能直接讀寫。
+
 ## 單 Container 限制
 
 腳本固定使用：
@@ -264,8 +266,8 @@ container name: opencode-dev-yuta
 OpenCode state 固定使用兩個 Docker named volumes：
 
 ```text
-opencode-home-yuta  -> /home/node/.local/share/opencode
-opencode-state-yuta -> /home/node/.local/state
+opencode-home-yuta  -> /home/opencode/.local/share/opencode
+opencode-state-yuta -> /home/opencode/.local/state
 ```
 
 這些 volumes 是每個使用者自己的本機資料，會保留：
@@ -347,7 +349,21 @@ bash .devcontainer/scripts/init-opencode-dev.sh --uninstall
 bash .devcontainer/scripts/build-image.sh
 ```
 
-從 `.devcontainer/Dockerfile` build image，依 OpenCode 版號 tag 成 `localhost/opencode-dev-yuta:<opencode-version>`，更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 Docker image tar。
+從 `.devcontainer/Dockerfile`（CA 模式）build image，依 OpenCode 版號 tag 成 `localhost/opencode-dev-yuta:<opencode-version>`，更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 Docker image tar。
+
+```bash
+bash .devcontainer/scripts/build-image.sh --dockerfile Dockerfile.insecure
+```
+
+使用 `.devcontainer/Dockerfile.insecure` build image，預設放寬 apt/npm/pip/curl/wget 的 SSL 驗證設定。
+
+```bash
+bash .devcontainer/scripts/build-image.sh \
+  --dockerfile Dockerfile \
+  --build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
+```
+
+在 CA 模式下傳入公司 CA（base64）並更新系統 trust store。
 
 ```bash
 bash .devcontainer/scripts/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar

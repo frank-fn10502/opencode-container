@@ -1,12 +1,22 @@
 FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 
-ARG COMPANY_CA_CERT_B64=""
-
 ENV DEBIAN_FRONTEND=noninteractive \
     TERM=xterm-256color \
     OPENCODE_USER=opencode \
     OPENCODE_HOME=/home/opencode/.local/share/opencode \
-    OPENCODE_STATE_HOME=/home/opencode/.local/state
+    OPENCODE_STATE_HOME=/home/opencode/.local/state \
+    CURL_CA_BUNDLE= \
+    SSL_CERT_FILE= \
+    REQUESTS_CA_BUNDLE= \
+    PYTHONHTTPSVERIFY=0
+
+RUN printf '%s\n' \
+      'Acquire::Retries "5";' \
+      'Acquire::http::Timeout "120";' \
+      'Acquire::https::Timeout "120";' \
+      'Acquire::https::Verify-Peer "false";' \
+      'Acquire::https::Verify-Host "false";' \
+      > /etc/apt/apt.conf.d/80-opencode-insecure-ssl
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -35,17 +45,15 @@ RUN apt-get update \
         pipx \
     && rm -rf /var/lib/apt/lists/*
 
-RUN if [ -n "${COMPANY_CA_CERT_B64}" ]; then \
-      printf '%s' "${COMPANY_CA_CERT_B64}" | base64 -d > /usr/local/share/ca-certificates/company-ca.crt; \
-      update-ca-certificates; \
-    fi
+RUN printf 'check_certificate = off\n' > /etc/wgetrc
 
-RUN npm config set cafile /etc/ssl/certs/ca-certificates.crt \
+RUN npm config set strict-ssl false \
+    && npm config set registry http://registry.npmjs.org/ \
     && npm config set fetch-retries 5 \
     && npm config set fetch-retry-mintimeout 20000 \
     && npm config set fetch-retry-maxtimeout 120000
 
-RUN pip3 config --global set global.cert /etc/ssl/certs/ca-certificates.crt \
+RUN pip3 config --global set global.trusted-host "pypi.org files.pythonhosted.org pypi.python.org" \
     && pip3 config --global set global.timeout 120 \
     && pip3 config --global set global.disable-pip-version-check true
 

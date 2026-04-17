@@ -5,7 +5,7 @@
   ],
   "service": "opencode",
   "workspaceFolder": "/workspace",
-  "remoteUser": "node",
+  "remoteUser": "opencode",
   "overrideCommand": true,
   "containerEnv": {
     "OLLAMA_API_KEY": "${localEnv:OLLAMA_API_KEY}"
