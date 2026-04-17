@@ -131,3 +131,12 @@ bash .devcontainer/scripts/build-image.sh --dockerfile Dockerfile.insecure
 完成後請將 `image.profile`、`compose.env` 與 tar 一併 commit，讓其他使用者可以直接透過 `./init.sh` 安裝新版。
 
 更完整的設計細節在 [.devcontainer/docs/README.md](.devcontainer/docs/README.md)。測試工具說明在 [test_opencode/README.md](test_opencode/README.md)。
+
+推送 image 到 Docker Hub（例如 `frank10502/opencode-dev-yuta`）可用 `.devcontainer/scripts/` 下的 helper：
+
+```bash
+./.devcontainer/scripts/push-dockerhub.sh 1.4.7
+./.devcontainer/scripts/push-dockerhub.sh 1.4.7 --latest
+```
+
+它會把本機 `localhost/opencode-dev-yuta:<tag>`（若 `.devcontainer/image.profile` 有 `IMAGE_REPOSITORY` 會自動套用）轉成 Docker Hub repo `frank10502/opencode-dev-yuta:<tag>` 並推送。
