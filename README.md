@@ -140,3 +140,15 @@ bash .devcontainer/scripts/build-image.sh --dockerfile Dockerfile.insecure
 ```
 
 它會把本機 `localhost/opencode-dev-yuta:<tag>`（若 `.devcontainer/image.profile` 有 `IMAGE_REPOSITORY` 會自動套用）轉成 Docker Hub repo `frank10502/opencode-dev-yuta:<tag>` 並推送。
+
+從 Docker Hub 下載指定版本、還原為本機命名、並打包成 tar：
+
+```bash
+./.devcontainer/scripts/pull-and-pack-image.sh 1.4.7
+```
+
+它會執行：
+
+1. pull `frank10502/opencode-dev-yuta:1.4.7`
+2. tag 成 `localhost/opencode-dev-yuta:1.4.7`（或 `.devcontainer/image.profile` 的 `IMAGE_REPOSITORY`）
+3. 輸出 tar 到 `.docker_imgs/opencode-dev-yuta-1.4.7.tar`
