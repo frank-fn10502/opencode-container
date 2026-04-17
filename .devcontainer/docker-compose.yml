@@ -10,6 +10,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
@@ -25,6 +26,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
