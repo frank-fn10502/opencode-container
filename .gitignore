@@ -17,3 +17,9 @@ opencode-output/*
 !opencode-output/.gitkeep
 
 .tmp/
+
+# Local Docker image packages are distributed outside git.
+.docker_imgs/*
+!.docker_imgs/.gitkeep
+
+test_opencode/logs/

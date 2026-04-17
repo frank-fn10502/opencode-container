@@ -1,0 +1,40 @@
+services:
+  opencode:
+    image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
+    container_name: opencode-dev-yuta
+    pull_policy: never
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
+      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
+      - opencode-home-yuta:/home/node/.local/share/opencode
+      - opencode-state-yuta:/home/node/.local/state
+
+  opencode-cpp-runner:
+    image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
+    pull_policy: never
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
+      - ./config/opencode.json:/home/node/.config/opencode/opencode.json:ro
+      - opencode-cpp-runner-home-yuta:/home/node/.local/share/opencode
+      - opencode-cpp-runner-local-state-yuta:/home/node/.local/state
+
+volumes:
+  opencode-home-yuta:
+    name: opencode-home-yuta
+  opencode-state-yuta:
+    name: opencode-state-yuta
+  opencode-cpp-runner-home-yuta:
+  opencode-cpp-runner-local-state-yuta:

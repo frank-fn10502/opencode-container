@@ -4,13 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-CONFIG_FILE="${DEVCONTAINER_DIR}/config/opencode.json"
+COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
+COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
 INIT_SCRIPT="${SCRIPT_DIR}/init-opencode-dev.sh"
 
-IMAGE_NAME="localhost/opencode-dev:local"
 CONTAINER_NAME="opencode-dev-yuta"
-HOME_VOLUME="opencode-home-yuta"
-STATE_VOLUME="opencode-state-yuta"
 
 usage() {
   cat <<'USAGE'
@@ -47,21 +45,26 @@ exists, this script asks whether to close it. Refusing leaves it untouched and
 exits.
 
 Implementation details:
+  The Docker image is fixed by compose.env as OPENCODE_DEV_IMAGE.
+  Container settings are defined in docker-compose.yml.
   The selected project directory is mounted into the container at /workspace.
   OpenCode runs inside a short-lived Docker container named opencode-dev-yuta.
   OpenCode state is stored in Docker named volumes, not in the project directory.
 USAGE
 }
 
-ensure_external_volume() {
-  local volume_name="$1"
+ensure_compose_env() {
+  if [[ ! -f "${COMPOSE_ENV}" ]]; then
+    printf 'Cannot find compose env: %s\n' "${COMPOSE_ENV}" >&2
+    printf 'Run ./init.sh to install opencode-dev with a fixed image setting.\n' >&2
+    exit 1
+  fi
 
-  docker volume inspect "${volume_name}" >/dev/null 2>&1 || docker volume create "${volume_name}" >/dev/null
-}
-
-ensure_external_volumes() {
-  ensure_external_volume "${HOME_VOLUME}"
-  ensure_external_volume "${STATE_VOLUME}"
+  if ! grep -Eq '^OPENCODE_DEV_IMAGE=.+:.+' "${COMPOSE_ENV}"; then
+    printf 'compose.env does not contain a fixed OPENCODE_DEV_IMAGE value: %s\n' "${COMPOSE_ENV}" >&2
+    printf 'Run ./init.sh after placing the image tar under .docker_imgs/.\n' >&2
+    exit 1
+  fi
 }
 
 container_id() {
@@ -137,20 +140,20 @@ resolve_project_dir() {
   (cd "${target}" && pwd -P)
 }
 
-docker_run_base() {
+compose_run_base() {
   local project_dir="$1"
   shift
 
-  docker run --rm -it \
+  ensure_compose_env
+
+  OPENCODE_DEV_WORKSPACE="${project_dir}" \
+  docker compose \
+    --env-file "${COMPOSE_ENV}" \
+    --file "${COMPOSE_FILE}" \
+    run \
+    --rm \
     --name "${CONTAINER_NAME}" \
-    --workdir /workspace \
-    --add-host host.docker.internal:host-gateway \
-    --env "OLLAMA_API_KEY=${OLLAMA_API_KEY:-}" \
-    --volume "${project_dir}:/workspace" \
-    --volume "${CONFIG_FILE}:/home/node/.config/opencode/opencode.json:ro" \
-    --volume "${HOME_VOLUME}:/home/node/.local/share/opencode" \
-    --volume "${STATE_VOLUME}:/home/node/.local/state" \
-    "${IMAGE_NAME}" \
+    opencode \
     "$@"
 }
 
@@ -158,13 +161,13 @@ run_opencode() {
   local project_dir="$1"
   shift
 
-  docker_run_base "${project_dir}" opencode "$@"
+  compose_run_base "${project_dir}" opencode "$@"
 }
 
 run_shell() {
   local project_dir="$1"
 
-  docker_run_base "${project_dir}" bash
+  compose_run_base "${project_dir}" bash
 }
 
 show_status() {
@@ -223,7 +226,6 @@ case "${command_name}" in
 
   shell)
     shift || true
-    ensure_external_volumes
     remove_existing_container_if_allowed
     run_shell "$(resolve_project_dir "")"
     ;;
@@ -237,14 +239,12 @@ case "${command_name}" in
     ;;
 
   "")
-    ensure_external_volumes
     remove_existing_container_if_allowed
     run_opencode "$(resolve_project_dir "")"
     ;;
 
   --)
     shift || true
-    ensure_external_volumes
     remove_existing_container_if_allowed
     run_opencode "$(resolve_project_dir "")" "$@"
     ;;
@@ -255,7 +255,6 @@ case "${command_name}" in
     if [[ $# -gt 0 && "${1}" == "--" ]]; then
       shift
     fi
-    ensure_external_volumes
     remove_existing_container_if_allowed
     run_opencode "$(resolve_project_dir "${project_arg}")" "$@"
     ;;

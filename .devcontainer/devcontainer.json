@@ -1,7 +1,7 @@
 {
   "name": "opencode-dev",
   "dockerComposeFile": [
-    "compose.yaml"
+    "docker-compose.yml"
   ],
   "service": "opencode",
   "workspaceFolder": "/workspace",

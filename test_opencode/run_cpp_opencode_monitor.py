@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-COMPOSE_FILE = PROJECT_ROOT / ".devcontainer" / "compose.yaml"
+COMPOSE_FILE = PROJECT_ROOT / ".devcontainer" / "docker-compose.yml"
 RUNNER_SERVICE = "opencode-cpp-runner"
 RUNNER_CONTAINER = "devcontainer-opencode-cpp-runner-1"
 LOG_DIR = SCRIPT_DIR / "logs"
