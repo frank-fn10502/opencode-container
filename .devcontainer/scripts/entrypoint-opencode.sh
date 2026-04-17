@@ -5,6 +5,19 @@ set -euo pipefail
 OPENCODE_USER="${OPENCODE_USER:-opencode}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
 
+find_available_uid() {
+  local uid_candidate
+
+  for uid_candidate in $(seq 2000 65000); do
+    if ! getent passwd "${uid_candidate}" >/dev/null; then
+      printf '%s\n' "${uid_candidate}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 sync_workspace_identity() {
   local target_uid target_gid
   local current_uid current_gid
@@ -37,7 +50,18 @@ sync_workspace_identity() {
   if [[ "${target_uid}" != "${current_uid}" ]]; then
     existing_user="$(getent passwd "${target_uid}" | cut -d: -f1 || true)"
     if [[ -n "${existing_user}" && "${existing_user}" != "${OPENCODE_USER}" ]]; then
-      echo "[opencode-entrypoint] uid ${target_uid} is used by ${existing_user}; keep ${OPENCODE_USER} uid ${current_uid}" >&2
+      if [[ "${existing_user}" == "node" ]]; then
+        reassigned_uid="$(find_available_uid || true)"
+        if [[ -z "${reassigned_uid}" ]]; then
+          echo "[opencode-entrypoint] cannot find free uid for ${existing_user}; keep ${OPENCODE_USER} uid ${current_uid}" >&2
+        else
+          usermod -u "${reassigned_uid}" "${existing_user}"
+          usermod -u "${target_uid}" "${OPENCODE_USER}"
+          echo "[opencode-entrypoint] moved ${existing_user} uid ${target_uid} -> ${reassigned_uid}; set ${OPENCODE_USER} uid to ${target_uid}" >&2
+        fi
+      else
+        echo "[opencode-entrypoint] uid ${target_uid} is used by ${existing_user}; keep ${OPENCODE_USER} uid ${current_uid}" >&2
+      fi
     else
       usermod -u "${target_uid}" "${OPENCODE_USER}"
     fi
