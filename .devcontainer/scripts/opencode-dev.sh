@@ -5,31 +5,51 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CONFIG_FILE="${DEVCONTAINER_DIR}/config/opencode.json"
+INIT_SCRIPT="${SCRIPT_DIR}/init-opencode-dev.sh"
 
 IMAGE_NAME="localhost/opencode-dev:local"
-CONTAINER_NAME="opencode-dev"
-HOME_VOLUME="opencode-home"
-STATE_VOLUME="opencode-state"
+CONTAINER_NAME="opencode-dev-yuta"
+HOME_VOLUME="opencode-home-yuta"
+STATE_VOLUME="opencode-state-yuta"
 
 usage() {
   cat <<'USAGE'
-Usage: opencode-dev [path] [-- opencode-args...]
-       opencode-dev shell [path]
-       opencode-dev stop
-       opencode-dev status
+Usage: opencode-dev [path]
+       opencode-dev --uninstall
+       opencode-dev --admin-help
 
-Default behavior:
-  opencode-dev              Bind the current directory to /workspace and run opencode.
-  opencode-dev /some/project Bind that directory to /workspace and run opencode.
+Common usage:
+  opencode-dev               Open the current directory with OpenCode.
+  opencode-dev /some/project Open that project directory with OpenCode.
 
 Commands:
-  shell     Start a short-lived container and open bash.
-  stop      Stop and remove the existing opencode-dev container.
-  status    Show the existing opencode-dev container, if any.
+  --uninstall
+            Remove the opencode-dev shell profile block and installed runtime.
+  --admin-help
+            Show debug/admin commands and container details.
+USAGE
+}
 
-Only one container named opencode-dev is allowed at a time. If one already
+admin_usage() {
+  cat <<'USAGE'
+Debug/Admin commands:
+  opencode-dev shell
+      Open a bash shell for the current directory at /workspace.
+
+  opencode-dev status
+      Show the existing opencode-dev-yuta container, if any.
+
+  opencode-dev stop
+      Stop and remove the existing opencode-dev-yuta container.
+
+Only one container named opencode-dev-yuta is allowed at a time. If one already
 exists, this script asks whether to close it. Refusing leaves it untouched and
 exits.
+
+Implementation details:
+  The selected project directory is mounted into the container at /workspace.
+  OpenCode runs inside a short-lived Docker container named opencode-dev-yuta.
+  OpenCode state is stored in Docker named volumes, not in the project directory.
 USAGE
 }
 
@@ -93,10 +113,10 @@ resolve_project_dir() {
     target="${PWD}"
   else
     case "${requested}" in
-      ~)
+      \~)
         target="${HOME}"
         ;;
-      ~/*)
+      \~/*)
         target="${HOME}/${requested#"~/"}"
         ;;
       /*)
@@ -152,7 +172,7 @@ show_status() {
 
   id="$(container_id)"
   if [[ -z "${id}" ]]; then
-    printf 'No opencode-dev container exists.\n'
+    printf 'No opencode-dev-yuta container exists.\n'
     return
   fi
 
@@ -164,7 +184,7 @@ stop_existing() {
   id="$(container_id)"
 
   if [[ -z "${id}" ]]; then
-    printf 'No opencode-dev container exists.\n'
+    printf 'No opencode-dev-yuta container exists.\n'
     return
   fi
 
@@ -172,7 +192,16 @@ stop_existing() {
     docker stop "${id}" >/dev/null
   fi
   docker rm "${id}" >/dev/null
-  printf 'Removed opencode-dev container.\n'
+  printf 'Removed opencode-dev-yuta container.\n'
+}
+
+uninstall_opencode_dev() {
+  if [[ ! -f "${INIT_SCRIPT}" ]]; then
+    printf 'Cannot find uninstall script: %s\n' "${INIT_SCRIPT}" >&2
+    exit 1
+  fi
+
+  bash "${INIT_SCRIPT}" --uninstall
 }
 
 command_name="${1:-}"
@@ -181,14 +210,22 @@ case "${command_name}" in
     usage
     exit 0
     ;;
+  --admin-help)
+    admin_usage
+    exit 0
+    ;;
 esac
 
 case "${command_name}" in
+  --uninstall)
+    uninstall_opencode_dev
+    ;;
+
   shell)
     shift || true
     ensure_external_volumes
     remove_existing_container_if_allowed
-    run_shell "$(resolve_project_dir "${1:-}")"
+    run_shell "$(resolve_project_dir "")"
     ;;
 
   stop)
