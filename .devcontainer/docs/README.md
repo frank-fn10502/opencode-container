@@ -4,7 +4,7 @@
 
 ## 設計目標
 
-- 使用本機 Docker image `localhost/opencode-dev-yuta:<opencode-version>` 提供 OpenCode 與基本開發工具。
+- 使用本機 Docker image `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>` 提供 OpenCode 與基本開發工具。
 - init script 使用使用者權限安裝，不需要 sudo。
 - init script 把 runtime 安裝到 `~/.local/bin/opencode-dev-yuta/`，並在 shell profile 加入可移除的 `opencode-dev` function 區塊。
 - 安裝必須可逆；解除安裝只移除 init script 自己加入的 profile 標記區塊與自己管理的 install 目錄。
@@ -74,27 +74,31 @@ repo 內的 script 依用途分成三類：
   container.sh                container lifecycle 與 compose run
   entrypoint-opencode.sh      image 內的 container entrypoint
 
-.devcontainer/scripts/release/
+admin/
+  README.md                   維護者 build/update/push/pull 說明
+  update-opencode-version.sh  維護者解析 latest OpenCode 版本並寫入設定
   build-image.sh              維護者 build base image 與輸出 tar
   push-dockerhub.sh           維護者推送 image
   pull-and-pack-image.sh      維護者下載 image 並重新打包 tar
 ```
 
-安裝後只會複製 `init/` 與 `runtime/` 需要的內容到 `~/.local/bin/opencode-dev-yuta/`；`release/` 工具留在 repo 中給維護者使用。
+安裝後只會複製 `init/` 與 `runtime/` 需要的內容到 `~/.local/bin/opencode-dev-yuta/`；`admin/` 工具留在 repo 中給維護者使用。
 
-`image.profile` 是 image 設定來源，保存 image repository 與 tag：
+`image.profile` 是 image 設定來源，保存 image repository、OpenCode 版本與環境 revision：
 
 ```bash
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
-IMAGE_TAG=""
+OPENCODE_VERSION="1.4.7"
+ENV_REVISION="1"
+IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 ```
 
-`IMAGE_REPOSITORY` 與 `IMAGE_TAG` 是目前 release 的 image 基準。`IMAGE_TAG` 已設定時，init 只接受 exact `IMAGE_REPOSITORY:IMAGE_TAG`；`IMAGE_TAG` 未設定時，才退回使用本機任一個 `IMAGE_REPOSITORY:*` 或讓使用者從 `.docker_imgs/` 選擇 tar。
+`OPENCODE_VERSION` 是 Dockerfile 實際安裝的 OpenCode 版本。`ENV_REVISION` 是 opencode-dev default/base 環境 revision；同一個 OpenCode 版本下，只要 base 環境有會影響使用者的變更就遞增。`IMAGE_TAG` 已設定時，init 只接受 exact `IMAGE_REPOSITORY:IMAGE_TAG`；`IMAGE_TAG` 未設定時，才退回使用本機任一個 `IMAGE_REPOSITORY:*` 或讓使用者從 `.docker_imgs/` 選擇 tar。
 
 `compose.env` 是 Compose 實際讀取 image 的固定來源。`build-image.sh` 成功後會寫入：
 
 ```bash
-OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:<opencode-version>
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
 ```
 
 `docker-compose.yml` 只讀這個 `OPENCODE_DEV_IMAGE`，不在啟動時重新猜測 base image。`build-image.sh` 與 `install-image.sh` 也會更新穩定 alias：
@@ -164,33 +168,53 @@ bash on Linux  -> ~/.bashrc
 
 ## Image 來源與封裝
 
-公司環境不假設每台電腦都能穩定連外 build image。維護者在可 build 的電腦上從 Dockerfile 建立 image，script 會讀取 image 內的 OpenCode 版號，然後用固定名稱與版號 tag：
+公司環境不假設每台電腦都能穩定連外 build image。OpenCode 版本與 default/base 環境 revision 由 `.devcontainer/image.profile` 定義：
 
 ```text
-localhost/opencode-dev-yuta:<opencode-version>
+OPENCODE_VERSION="1.4.7"
+ENV_REVISION="1"
+IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 ```
 
-建立並打包 tar：
+tag 格式是：
+
+```text
+localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
+```
+
+維護者若要解析目前可安裝的 OpenCode 版本，只在 release host 上執行：
 
 ```bash
-bash .devcontainer/scripts/release/build-image.sh
+./admin/update-opencode-version.sh
 ```
 
-`build-image.sh` 除了輸出 tar，也會自動更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。這些檔案應一併 commit 到 repo，讓使用者拉取新版後可以直接執行 `./init.sh` 安裝。
+這個 script 會使用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。如果 OpenCode 版本有變，`ENV_REVISION` 預設重設為 `1`；如果版本沒變，會保留目前 revision。若 default/base 環境在同一個 OpenCode 版本下有變更，維護者應手動增加 `ENV_REVISION`，或執行：
+
+```bash
+./admin/update-opencode-version.sh --env-revision 2
+```
+
+一般 build 不會再依 build 結果決定 tag，而是照 `image.profile` 指定版本安裝並驗證。建立並打包 tar：
+
+```bash
+./admin/build-image.sh
+```
+
+`build-image.sh` 會把 `OPENCODE_VERSION` 傳入 Dockerfile，驗證 build 出來的 `opencode --version` 與 `image.profile` 一致，並更新 `localhost/opencode-dev-yuta:base` alias。這些檔案應一併 commit 到 repo，讓使用者拉取新版後可以直接執行 `./init.sh` 安裝。
 
 預設輸出：
 
 ```text
-.docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+.docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
 使用者拿到 tar 後，在自己的電腦載入 image：
 
 ```bash
-bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
-`install-image.sh` 只接受直接放在 `.docker_imgs/` 下、檔名符合 `opencode-dev-yuta-*.tar` 的 tar。它不接受 URL、不接受其他資料夾，也不遞迴搜尋子資料夾。tar 內必須含有 `localhost/opencode-dev-yuta:<opencode-version>` 的 image。載入成功後，如果 host launcher 已經安裝，它會同步更新 `~/.local/bin/opencode-dev-yuta/image.profile` 與 `~/.local/bin/opencode-dev-yuta/compose.env`。`install-image.sh` 不會修改 repo 內的 `.devcontainer/image.profile` 或 `.devcontainer/compose.env`，這些檔案由 `build-image.sh` 維護並 commit 到 repo。
+`install-image.sh` 只接受直接放在 `.docker_imgs/` 下、檔名符合 `opencode-dev-yuta-*.tar` 的 tar。它不接受 URL、不接受其他資料夾，也不遞迴搜尋子資料夾。tar 內必須含有 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>` 的 image。載入成功後，如果 host launcher 已經安裝，它會同步更新 `~/.local/bin/opencode-dev-yuta/image.profile` 與 `~/.local/bin/opencode-dev-yuta/compose.env`。`install-image.sh` 不會修改 repo 內的 `.devcontainer/image.profile` 或 `.devcontainer/compose.env`，這些檔案由 release script 維護並 commit 到 repo。
 
 如果 `.devcontainer/image.profile` 已指定 `IMAGE_TAG`，`install-image.sh` 只會接受 exact image：
 
@@ -474,19 +498,25 @@ bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 從 shell profile 移除 `opencode-dev` function 區塊，並刪除本工具管理的 install 目錄。
 
 ```bash
-bash .devcontainer/scripts/release/build-image.sh
+./admin/build-image.sh
 ```
 
-從 `.devcontainer/Dockerfile`（CA 模式）build image，依 OpenCode 版號 tag 成 `localhost/opencode-dev-yuta:<opencode-version>`，更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 Docker image tar。
+從 `.devcontainer/Dockerfile`（CA 模式）build image，依 `.devcontainer/image.profile` 指定的 OpenCode 版號與 env revision tag 成 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>`，更新 base alias，並輸出 Docker image tar。
 
 ```bash
-bash .devcontainer/scripts/release/build-image.sh --dockerfile Dockerfile.insecure
+./admin/update-opencode-version.sh
+```
+
+只在 release host 上建立暫時 image 解析目前 OpenCode 版本，並寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。
+
+```bash
+./admin/build-image.sh --dockerfile Dockerfile.insecure
 ```
 
 使用 `.devcontainer/Dockerfile.insecure` build image，預設放寬 apt/npm/pip/curl/wget 的 SSL 驗證設定。
 
 ```bash
-bash .devcontainer/scripts/release/build-image.sh \
+./admin/build-image.sh \
   --dockerfile Dockerfile \
   --build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
 ```
@@ -494,7 +524,7 @@ bash .devcontainer/scripts/release/build-image.sh \
 在 CA 模式下傳入公司 CA（base64）並更新系統 trust store。
 
 ```bash
-bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
 把 image tar 載入本機 Docker。不會修改 repo 內的 `image.profile` 或 `compose.env`。

@@ -3,11 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-PROJECT_ROOT="$(cd "${DEVCONTAINER_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
+OPENCODE_VERSION=""
+ENV_REVISION=""
+IMAGE_TAG=""
 
 if [[ -f "${IMAGE_PROFILE}" ]]; then
   # shellcheck source=/dev/null
@@ -16,10 +19,12 @@ fi
 
 usage() {
   cat <<'USAGE'
-Usage: build-image.sh [--dockerfile FILE] [--build-arg KEY=VALUE]...
+Usage: admin/build-image.sh [--dockerfile FILE] [--build-arg KEY=VALUE]...
 
-Build the OpenCode dev image, detect the installed OpenCode version, tag the
-image as localhost/opencode-dev-yuta:<version>, and save it under .docker_imgs/.
+Build the OpenCode dev image from the version pinned in image.profile, verify
+the installed OpenCode version, tag the image as
+localhost/opencode-dev-yuta:<opencode-version>-env.<revision>, and save it
+under .docker_imgs/.
 
 Options:
   --dockerfile FILE
@@ -76,7 +81,24 @@ if [[ ! -f "${dockerfile_path}" ]]; then
   exit 1
 fi
 
+if [[ -z "${OPENCODE_VERSION:-}" ]]; then
+  printf 'OPENCODE_VERSION is not set in %s\n' "${IMAGE_PROFILE}" >&2
+  printf 'Run update-opencode-version.sh on the release host, or set it manually.\n' >&2
+  exit 1
+fi
+
+if [[ -z "${ENV_REVISION:-}" ]]; then
+  printf 'ENV_REVISION is not set in %s\n' "${IMAGE_PROFILE}" >&2
+  exit 1
+fi
+
+IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 temp_tag="${IMAGE_REPOSITORY}:build-temp"
+
+cleanup() {
+  docker image rm "${temp_tag}" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 
 printf 'Building %s from %s\n' "${temp_tag}" "${dockerfile_path}"
 docker_build_cmd=(
@@ -89,36 +111,45 @@ if (( ${#build_args[@]} > 0 )); then
   docker_build_cmd+=("${build_args[@]}")
 fi
 
+docker_build_cmd+=("--build-arg" "OPENCODE_VERSION=${OPENCODE_VERSION}")
 docker_build_cmd+=("${DEVCONTAINER_DIR}")
 
 "${docker_build_cmd[@]}"
 
 version_output="$(docker run --rm "${temp_tag}" opencode --version)"
-version="$(printf '%s\n' "${version_output}" | extract_version)"
+detected_version="$(printf '%s\n' "${version_output}" | extract_version)"
 
-if [[ -z "${version}" ]]; then
+if [[ -z "${detected_version}" ]]; then
   printf 'Unable to detect OpenCode version from: %s\n' "${version_output}" >&2
   exit 1
 fi
 
-image_name="${IMAGE_REPOSITORY}:${version}"
+if [[ "${detected_version}" != "${OPENCODE_VERSION}" ]]; then
+  printf 'OpenCode version mismatch.\n' >&2
+  printf '  image.profile: %s\n' "${OPENCODE_VERSION}" >&2
+  printf '  built image:    %s\n' "${detected_version}" >&2
+  exit 1
+fi
+
+image_name="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 base_alias="${IMAGE_REPOSITORY}:base"
 docker tag "${temp_tag}" "${image_name}"
 docker tag "${image_name}" "${base_alias}"
 
 mkdir -p "${PROJECT_ROOT}/.docker_imgs"
-tar_path="${PROJECT_ROOT}/.docker_imgs/opencode-dev-yuta-${version}.tar"
+tar_path="${PROJECT_ROOT}/.docker_imgs/opencode-dev-yuta-${IMAGE_TAG}.tar"
 
 cat > "${IMAGE_PROFILE}" <<EOF
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-IMAGE_TAG="${version}"
+OPENCODE_VERSION="${OPENCODE_VERSION}"
+ENV_REVISION="${ENV_REVISION}"
+IMAGE_TAG="\${OPENCODE_VERSION}-env.\${ENV_REVISION}"
 EOF
 cat > "${COMPOSE_ENV}" <<EOF
 OPENCODE_DEV_IMAGE=${image_name}
 EOF
 printf 'Saving %s to %s\n' "${image_name}" "${tar_path}"
 docker save --output "${tar_path}" "${image_name}"
-docker image rm "${temp_tag}" >/dev/null 2>&1 || true
 
 printf 'Built image: %s\n' "${image_name}"
 printf 'Updated base alias: %s\n' "${base_alias}"

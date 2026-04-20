@@ -3,8 +3,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-PROJECT_ROOT="$(cd "${DEVCONTAINER_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 
 DEFAULT_REMOTE_REPO="frank10502/opencode-dev-yuta"
@@ -22,7 +22,7 @@ OUTPUT_PATH=""
 
 usage() {
   cat <<'USAGE'
-Usage: .devcontainer/scripts/release/pull-and-pack-image.sh <tag> [--output PATH] [--remote-repo REPO] [--local-repo REPO]
+Usage: admin/pull-and-pack-image.sh <tag> [--output PATH] [--remote-repo REPO] [--local-repo REPO]
 
 Pull image from Docker Hub, retag to local repo naming, then save to tar.
 
@@ -32,8 +32,8 @@ Defaults:
   output tar:  .docker_imgs/opencode-dev-yuta-<tag>.tar
 
 Examples:
-  ./.devcontainer/scripts/release/pull-and-pack-image.sh 1.4.7
-  ./.devcontainer/scripts/release/pull-and-pack-image.sh 1.4.7 --output .docker_imgs/opencode-dev-yuta-1.4.7.tar
+  ./admin/pull-and-pack-image.sh 1.4.7-env.1
+  ./admin/pull-and-pack-image.sh 1.4.7-env.1 --output .docker_imgs/opencode-dev-yuta-1.4.7-env.1.tar
 USAGE
 }
 

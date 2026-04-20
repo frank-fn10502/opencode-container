@@ -3,7 +3,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 
 DEFAULT_SOURCE_REPO="localhost/opencode-dev-yuta"
@@ -21,7 +22,7 @@ TAG=""
 
 usage() {
   cat <<'USAGE'
-Usage: .devcontainer/scripts/release/push-dockerhub.sh <tag> [--latest] [--target-repo REPO]
+Usage: admin/push-dockerhub.sh <tag> [--latest] [--target-repo REPO]
 
 Tag and push local image to Docker Hub.
 
@@ -30,9 +31,9 @@ Defaults:
   target repo: frank10502/opencode-dev-yuta
 
 Examples:
-  ./.devcontainer/scripts/release/push-dockerhub.sh 1.4.7
-  ./.devcontainer/scripts/release/push-dockerhub.sh 1.4.7 --latest
-  ./.devcontainer/scripts/release/push-dockerhub.sh 1.4.7 --target-repo frank10502/opencode-dev-yuta
+  ./admin/push-dockerhub.sh 1.4.7-env.1
+  ./admin/push-dockerhub.sh 1.4.7-env.1 --latest
+  ./admin/push-dockerhub.sh 1.4.7-env.1 --target-repo frank10502/opencode-dev-yuta
 USAGE
 }
 

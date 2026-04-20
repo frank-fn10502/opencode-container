@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 
+ARG OPENCODE_VERSION="latest"
+
 ENV DEBIAN_FRONTEND=noninteractive \
     TERM=xterm-256color \
     OPENCODE_USER=opencode \
@@ -69,7 +71,7 @@ RUN usermod -aG sudo "${OPENCODE_USER}" \
     && echo "${OPENCODE_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${OPENCODE_USER}" \
     && chmod 0440 "/etc/sudoers.d/${OPENCODE_USER}"
 
-RUN npm install -g opencode-ai
+RUN npm install -g "opencode-ai@${OPENCODE_VERSION}"
 
 RUN mkdir -p \
         /workspace \

@@ -10,7 +10,7 @@
 image tar 預設放在專案根目錄：
 
 ```text
-.docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+.docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
 tar 只能放在 `.docker_imgs/` 這一層，不支援其他位置。
@@ -151,8 +151,6 @@ opencode-dev --uninstall
 ./init.sh
 ```
 
-發佈新版時，維護者會執行 `build-image.sh`，它會自動更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並把 image tar 輸出到 `.docker_imgs/`。這些變更會一併 commit 到 repo。
-
 使用者只要把對應 tar 放到：
 
 ```text
@@ -171,53 +169,8 @@ opencode-dev --uninstall
 
 ## 維護者
 
-從預設 CA 模式 Dockerfile build 並打包 image tar：
+維護者用的 build/update/push/pull script 與操作說明集中在 [admin/README.md](admin/README.md)。
 
-```bash
-bash .devcontainer/scripts/release/build-image.sh
-```
+非必要不要更新 OpenCode version。若只是調整 default/base 環境，通常只需要增加 `.devcontainer/image.profile` 的 `ENV_REVISION`，再執行 `./admin/build-image.sh`。
 
-如果公司需要匯入 CA，使用 build-arg 傳入 base64：
-
-```bash
-bash .devcontainer/scripts/release/build-image.sh \
-	--dockerfile Dockerfile \
-	--build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
-```
-
-如果要使用全面放寬 SSL 檢查的模式（apt/npm/pip/curl/wget），改用 insecure 版本：
-
-```bash
-bash .devcontainer/scripts/release/build-image.sh --dockerfile Dockerfile.insecure
-```
-
-`build-image.sh` 會自動更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 tar 到：
-
-```text
-.docker_imgs/opencode-dev-yuta-<opencode-version>.tar
-```
-
-完成後請將 `image.profile`、`compose.env` 與 tar 一併 commit，讓其他使用者可以直接透過 `./init.sh` 安裝新版。
-
-更完整的設計細節在 [.devcontainer/docs/README.md](.devcontainer/docs/README.md)。測試工具說明在 [test_opencode/README.md](test_opencode/README.md)。
-
-推送 image 到 Docker Hub（例如 `frank10502/opencode-dev-yuta`）可用 `.devcontainer/scripts/release/` 下的 helper：
-
-```bash
-./.devcontainer/scripts/release/push-dockerhub.sh 1.4.7
-./.devcontainer/scripts/release/push-dockerhub.sh 1.4.7 --latest
-```
-
-它會把本機 `localhost/opencode-dev-yuta:<tag>`（若 `.devcontainer/image.profile` 有 `IMAGE_REPOSITORY` 會自動套用）轉成 Docker Hub repo `frank10502/opencode-dev-yuta:<tag>` 並推送。
-
-從 Docker Hub 下載指定版本、還原為本機命名、並打包成 tar：
-
-```bash
-./.devcontainer/scripts/release/pull-and-pack-image.sh 1.4.7
-```
-
-它會執行：
-
-1. pull `frank10502/opencode-dev-yuta:1.4.7`
-2. tag 成 `localhost/opencode-dev-yuta:1.4.7`（或 `.devcontainer/image.profile` 的 `IMAGE_REPOSITORY`）
-3. 輸出 tar 到 `.docker_imgs/opencode-dev-yuta-1.4.7.tar`
+更完整的設計細節在 [.devcontainer/docs/README.md](.devcontainer/docs/README.md)。
