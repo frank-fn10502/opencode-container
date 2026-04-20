@@ -9,6 +9,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OPENCODE_STATE_HOME=/home/opencode/.local/state \
     PYTHON_VENV=/opt/opencode-python \
     PATH=/opt/opencode-python/bin:/home/opencode/.local/bin:${PATH} \
+    PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org" \
+    PIP_TIMEOUT=120 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     CURL_CA_BUNDLE= \
     SSL_CERT_FILE= \
     REQUESTS_CA_BUNDLE= \
@@ -80,7 +83,10 @@ RUN npm config set --global strict-ssl false \
 
 RUN pip3 config --global set global.trusted-host "pypi.org files.pythonhosted.org pypi.python.org" \
     && pip3 config --global set global.timeout 120 \
-    && pip3 config --global set global.disable-pip-version-check true
+    && pip3 config --global set global.disable-pip-version-check true \
+    && pip3 config --site set global.trusted-host "pypi.org files.pythonhosted.org pypi.python.org" \
+    && pip3 config --site set global.timeout 120 \
+    && pip3 config --site set global.disable-pip-version-check true
 
 RUN usermod -aG sudo "${OPENCODE_USER}" \
     && echo "${OPENCODE_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${OPENCODE_USER}" \

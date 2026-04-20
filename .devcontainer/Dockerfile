@@ -9,7 +9,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OPENCODE_HOME=/home/opencode/.local/share/opencode \
     OPENCODE_STATE_HOME=/home/opencode/.local/state \
     PYTHON_VENV=/opt/opencode-python \
-    PATH=/opt/opencode-python/bin:/home/opencode/.local/bin:${PATH}
+    PATH=/opt/opencode-python/bin:/home/opencode/.local/bin:${PATH} \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -71,7 +75,10 @@ RUN npm config set --global cafile /etc/ssl/certs/ca-certificates.crt \
 
 RUN pip3 config --global set global.cert /etc/ssl/certs/ca-certificates.crt \
     && pip3 config --global set global.timeout 120 \
-    && pip3 config --global set global.disable-pip-version-check true
+    && pip3 config --global set global.disable-pip-version-check true \
+    && pip3 config --site set global.cert /etc/ssl/certs/ca-certificates.crt \
+    && pip3 config --site set global.timeout 120 \
+    && pip3 config --site set global.disable-pip-version-check true
 
 RUN usermod -aG sudo "${OPENCODE_USER}" \
     && echo "${OPENCODE_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${OPENCODE_USER}" \
