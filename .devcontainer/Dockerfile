@@ -7,7 +7,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TERM=xterm-256color \
     OPENCODE_USER=opencode \
     OPENCODE_HOME=/home/opencode/.local/share/opencode \
-    OPENCODE_STATE_HOME=/home/opencode/.local/state
+    OPENCODE_STATE_HOME=/home/opencode/.local/state \
+    PYTHON_VENV=/opt/opencode-python \
+    PATH=/opt/opencode-python/bin:/home/opencode/.local/bin:${PATH}
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -37,6 +39,26 @@ RUN apt-get update \
         pipx \
     && rm -rf /var/lib/apt/lists/*
 
+RUN if ! getent group "${OPENCODE_USER}" >/dev/null; then \
+            groupadd "${OPENCODE_USER}"; \
+        fi \
+        && if ! id -u "${OPENCODE_USER}" >/dev/null 2>&1; then \
+            useradd --create-home --gid "${OPENCODE_USER}" --shell /bin/bash "${OPENCODE_USER}"; \
+        fi
+
+# Debian Bookworm marks /usr/bin/python3 as externally managed (PEP 668), so
+# normal pip installs must not target the system interpreter. Keep a writable
+# default venv and expose wrapper scripts from /usr/local/bin; wrappers are used
+# instead of symlinks so `python3 -m pip` keeps sys.prefix inside the venv.
+RUN python3 -m venv "${PYTHON_VENV}" \
+    && "${PYTHON_VENV}/bin/python" -m pip install --upgrade pip setuptools wheel \
+    && printf '#!/bin/sh\nexec "%s/bin/python" "$@"\n' "${PYTHON_VENV}" > /usr/local/bin/python \
+    && printf '#!/bin/sh\nexec "%s/bin/python3" "$@"\n' "${PYTHON_VENV}" > /usr/local/bin/python3 \
+    && printf '#!/bin/sh\nexec "%s/bin/python" -m pip "$@"\n' "${PYTHON_VENV}" > /usr/local/bin/pip \
+    && printf '#!/bin/sh\nexec "%s/bin/python3" -m pip "$@"\n' "${PYTHON_VENV}" > /usr/local/bin/pip3 \
+    && chmod 755 /usr/local/bin/python /usr/local/bin/python3 /usr/local/bin/pip /usr/local/bin/pip3 \
+    && chown -R "${OPENCODE_USER}:${OPENCODE_USER}" "${PYTHON_VENV}"
+
 RUN if [ -n "${COMPANY_CA_CERT_B64}" ]; then \
       printf '%s' "${COMPANY_CA_CERT_B64}" | base64 -d > /usr/local/share/ca-certificates/company-ca.crt; \
       update-ca-certificates; \
@@ -50,13 +72,6 @@ RUN npm config set --global cafile /etc/ssl/certs/ca-certificates.crt \
 RUN pip3 config --global set global.cert /etc/ssl/certs/ca-certificates.crt \
     && pip3 config --global set global.timeout 120 \
     && pip3 config --global set global.disable-pip-version-check true
-
-RUN if ! getent group "${OPENCODE_USER}" >/dev/null; then \
-            groupadd "${OPENCODE_USER}"; \
-        fi \
-        && if ! id -u "${OPENCODE_USER}" >/dev/null 2>&1; then \
-            useradd --create-home --gid "${OPENCODE_USER}" --shell /bin/bash "${OPENCODE_USER}"; \
-        fi
 
 RUN usermod -aG sudo "${OPENCODE_USER}" \
     && echo "${OPENCODE_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${OPENCODE_USER}" \

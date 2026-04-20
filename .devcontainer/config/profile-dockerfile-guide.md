@@ -120,6 +120,16 @@ If the tool can be installed under the `opencode` user without root, prefer that
 
 ## Python pattern
 
+The base image puts a writable virtual environment at the front of `PATH`:
+
+```text
+/opt/opencode-python
+```
+
+Normal commands such as `python`, `python3`, `pip`, and `pip3` use that virtual
+environment by default, so `pip install <package>` does not write into Debian's
+externally managed system Python.
+
 Prefer `pipx` for Python command-line tools:
 
 ```dockerfile
@@ -130,7 +140,9 @@ USER opencode
 RUN pipx install <tool-name>
 ```
 
-For system Python libraries that require OS packages:
+For Python packages that need native OS headers or clients, install only the OS
+dependencies with `apt`, then install the Python package with `pip`, `pipx`, or
+the project's own dependency manager:
 
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
@@ -144,7 +156,7 @@ RUN apt-get update \
 
 USER opencode
 
-RUN pipx install <tool-name>
+RUN pip install <python-package>
 ```
 
 ## Copying files

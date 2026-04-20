@@ -1,7 +1,5 @@
 FROM localhost/opencode-dev-yuta:base
 
-ENV PATH="/home/opencode/.local/bin:${PATH}"
-
 USER root
 
 # Install native headers and clients that Python developers commonly need.

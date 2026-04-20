@@ -5,6 +5,10 @@ set -euo pipefail
 OPENCODE_USER="${OPENCODE_USER:-opencode}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
 
+if [[ -n "${PYTHON_VENV:-}" && -d "${PYTHON_VENV}/bin" ]]; then
+  export PATH="${PYTHON_VENV}/bin:/home/${OPENCODE_USER}/.local/bin:${PATH}"
+fi
+
 find_available_uid() {
   local uid_candidate
 
@@ -79,7 +83,7 @@ if [[ "$(id -u)" -eq 0 ]]; then
   fi
 
   sync_workspace_identity
-  exec sudo -EHu "${OPENCODE_USER}" "$@"
+  exec sudo -EHu "${OPENCODE_USER}" env PATH="${PATH}" "$@"
 fi
 
 exec "$@"
