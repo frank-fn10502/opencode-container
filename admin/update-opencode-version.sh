@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
-COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
 ENV_REVISION="1"
@@ -138,13 +137,10 @@ fi
 image_tag="${detected_version}-env.${next_env_revision}"
 
 cat > "${IMAGE_PROFILE}" <<EOF
-IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-OPENCODE_VERSION="${detected_version}"
-ENV_REVISION="${next_env_revision}"
-IMAGE_TAG="\${OPENCODE_VERSION}-env.\${ENV_REVISION}"
-EOF
-
-cat > "${COMPOSE_ENV}" <<EOF
+IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
+OPENCODE_VERSION=${detected_version}
+ENV_REVISION=${next_env_revision}
+IMAGE_TAG=${image_tag}
 OPENCODE_DEV_IMAGE=${IMAGE_REPOSITORY}:${image_tag}
 EOF
 
@@ -152,4 +148,3 @@ printf 'Detected OpenCode version: %s\n' "${detected_version}"
 printf 'Set environment revision: %s\n' "${next_env_revision}"
 printf 'Updated image tag: %s\n' "${image_tag}"
 printf 'Wrote image profile: %s\n' "${IMAGE_PROFILE}"
-printf 'Wrote compose env: %s\n' "${COMPOSE_ENV}"

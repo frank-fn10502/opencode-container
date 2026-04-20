@@ -58,7 +58,7 @@ exists, this script asks whether to close it. Refusing leaves it untouched and
 exits.
 
 Implementation details:
-  The base Docker image is fixed by compose.env as OPENCODE_DEV_IMAGE.
+  The base Docker image is fixed by image.profile as OPENCODE_DEV_IMAGE.
   User profiles live at ~/.opencode-dev-yuta/Dockerfile.<profile>.
   Project profiles live at <project>/.opencode-dev-yuta/Dockerfile.<profile>.
   Selected profiles are stored in config.env beside the relevant profile files.

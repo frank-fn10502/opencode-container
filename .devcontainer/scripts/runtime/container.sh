@@ -47,13 +47,13 @@ compose_run_base() {
   shift
   shift
 
-  ensure_compose_env
+  ensure_image_profile
 
   OPENCODE_DEV_IMAGE="${image}" \
   OPENCODE_DEV_WORKSPACE="${project_dir}" \
   OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
   docker compose \
-    --env-file "${COMPOSE_ENV}" \
+    --env-file "${IMAGE_PROFILE}" \
     --file "${COMPOSE_FILE}" \
     run \
     --rm \

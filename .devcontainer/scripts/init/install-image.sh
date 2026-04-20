@@ -16,7 +16,6 @@ IMAGE_TAG=""
 INSTALL_DIR="${HOME}/.local/bin/opencode-dev-yuta"
 INSTALL_MARKER="${INSTALL_DIR}/.opencode-dev-managed"
 INSTALL_IMAGE_PROFILE="${INSTALL_DIR}/image.profile"
-INSTALL_COMPOSE_ENV="${INSTALL_DIR}/compose.env"
 
 if [[ -f "${IMAGE_PROFILE}" ]]; then
   # shellcheck source=/dev/null
@@ -199,10 +198,8 @@ update_install_metadata() {
   fi
 
   cat > "${INSTALL_IMAGE_PROFILE}" <<EOF
-IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-IMAGE_TAG="${image_tag}"
-EOF
-  cat > "${INSTALL_COMPOSE_ENV}" <<EOF
+IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
+IMAGE_TAG=${image_tag}
 OPENCODE_DEV_IMAGE=${image_name}
 EOF
   printf 'Updated base alias: %s\n' "${base_alias}"
@@ -272,5 +269,4 @@ update_install_metadata "${image_name}"
 printf 'Installed image: %s\n' "${image_name}"
 if [[ -f "${INSTALL_MARKER}" ]]; then
   printf 'Updated installed image profile: %s\n' "${INSTALL_IMAGE_PROFILE}"
-  printf 'Updated installed compose env: %s\n' "${INSTALL_COMPOSE_ENV}"
 fi

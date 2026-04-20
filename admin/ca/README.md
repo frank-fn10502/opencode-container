@@ -74,3 +74,5 @@ openssl s_client -connect HOST:PORT -servername HOST -showcerts
 ```text
 .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
+
+這個 tar 是公司內網發布包的一部分，不 commit 到 git。

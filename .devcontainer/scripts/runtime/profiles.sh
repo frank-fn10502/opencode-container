@@ -249,7 +249,7 @@ ensure_profile_image() {
   local profile="$2"
   local profile_spec scope dockerfile image base_alias base_image base_id dockerfile_sha context_dir reason
 
-  ensure_compose_env
+  ensure_image_profile
   ensure_base_alias
 
   profile_spec="$(profile_dockerfile "${project_dir}" "${profile}")"
@@ -306,7 +306,7 @@ active_image_for_project() {
   profile="$(selected_profile_name "${project_dir}")"
 
   if [[ "${profile}" == "${DEFAULT_PROFILE}" ]]; then
-    ensure_compose_env
+    ensure_image_profile
     ensure_base_alias
     base_alias_ref
     return

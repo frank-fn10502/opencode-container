@@ -8,7 +8,6 @@ else
 fi
 
 COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
-COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 
 if [[ -f "${DEVCONTAINER_DIR}/init/init-opencode-dev.sh" ]]; then
@@ -36,15 +35,15 @@ if [[ -f "${IMAGE_PROFILE}" ]]; then
   source "${IMAGE_PROFILE}"
 fi
 
-ensure_compose_env() {
-  if [[ ! -f "${COMPOSE_ENV}" ]]; then
-    printf 'Cannot find compose env: %s\n' "${COMPOSE_ENV}" >&2
+ensure_image_profile() {
+  if [[ ! -f "${IMAGE_PROFILE}" ]]; then
+    printf 'Cannot find image profile: %s\n' "${IMAGE_PROFILE}" >&2
     printf 'Run ./init.sh to install opencode-dev with a fixed image setting.\n' >&2
     exit 1
   fi
 
-  if ! grep -Eq '^OPENCODE_DEV_IMAGE=.+:.+' "${COMPOSE_ENV}"; then
-    printf 'compose.env does not contain a fixed OPENCODE_DEV_IMAGE value: %s\n' "${COMPOSE_ENV}" >&2
+  if ! grep -Eq '^OPENCODE_DEV_IMAGE=.+:.+' "${IMAGE_PROFILE}"; then
+    printf 'image.profile does not contain a fixed OPENCODE_DEV_IMAGE value: %s\n' "${IMAGE_PROFILE}" >&2
     printf 'Run ./init.sh after placing the image tar under .docker_imgs/.\n' >&2
     exit 1
   fi
@@ -53,9 +52,9 @@ ensure_compose_env() {
 base_image_ref() {
   local image
 
-  image="$(sed -n 's/^OPENCODE_DEV_IMAGE=//p' "${COMPOSE_ENV}" | head -n 1)"
+  image="$(sed -n 's/^OPENCODE_DEV_IMAGE=//p' "${IMAGE_PROFILE}" | head -n 1)"
   if [[ -z "${image}" ]]; then
-    printf 'compose.env does not contain OPENCODE_DEV_IMAGE: %s\n' "${COMPOSE_ENV}" >&2
+    printf 'image.profile does not contain OPENCODE_DEV_IMAGE: %s\n' "${IMAGE_PROFILE}" >&2
     exit 1
   fi
 

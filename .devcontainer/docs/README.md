@@ -47,7 +47,6 @@ opencode-dev
 ~/.local/bin/opencode-dev-yuta/.opencode-dev-managed
 ~/.local/bin/opencode-dev-yuta/.profile
 ~/.local/bin/opencode-dev-yuta/bin/opencode-dev
-~/.local/bin/opencode-dev-yuta/compose.env
 ~/.local/bin/opencode-dev-yuta/docker-compose.yml
 ~/.local/bin/opencode-dev-yuta/image.profile
 ~/.local/bin/opencode-dev-yuta/init/init-opencode-dev.sh
@@ -91,21 +90,16 @@ admin/
 `image.profile` 是 image 設定來源，保存 image repository、OpenCode 版本與環境 revision：
 
 ```bash
-IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
-OPENCODE_VERSION="1.4.7"
-ENV_REVISION="1"
-IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
+IMAGE_REPOSITORY=localhost/opencode-dev-yuta
+OPENCODE_VERSION=1.4.7
+ENV_REVISION=1
+IMAGE_TAG=1.4.7-env.1
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:1.4.7-env.1
 ```
 
-`OPENCODE_VERSION` 是 Dockerfile 實際安裝的 OpenCode 版本。`ENV_REVISION` 是 opencode-dev default/base 環境 revision；同一個 OpenCode 版本下，只要 base 環境有會影響使用者的變更就遞增。`IMAGE_TAG` 已設定時，init 只接受 exact `IMAGE_REPOSITORY:IMAGE_TAG`；`IMAGE_TAG` 未設定時，才退回使用本機任一個 `IMAGE_REPOSITORY:*` 或讓使用者從 `.docker_imgs/` 選擇 tar。
+`OPENCODE_VERSION` 是 Dockerfile 實際安裝的 OpenCode 版本。`ENV_REVISION` 是 opencode-dev default/base 環境 revision；同一個 OpenCode 版本下，只要 base 環境有會影響使用者的變更就遞增。`IMAGE_TAG` 已設定時，init 只接受 exact `IMAGE_REPOSITORY:IMAGE_TAG`；`IMAGE_TAG` 未設定時，才退回使用本機任一個 `IMAGE_REPOSITORY:*` 或讓使用者從 `.docker_imgs/` 選擇 tar。`OPENCODE_DEV_IMAGE` 是 Compose 讀取的固定 image，`docker-compose.yml` 不在啟動時重新猜測 base image。
 
-`compose.env` 是 Compose 實際讀取 image 的固定來源。`build-image.sh` 成功後會寫入：
-
-```bash
-OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
-```
-
-`docker-compose.yml` 只讀這個 `OPENCODE_DEV_IMAGE`，不在啟動時重新猜測 base image。`build-image.sh` 與 `install-image.sh` 也會更新穩定 alias：
+`build-image.sh` 與 `install-image.sh` 也會更新穩定 alias：
 
 ```text
 localhost/opencode-dev-yuta:base
@@ -175,9 +169,10 @@ bash on Linux  -> ~/.bashrc
 公司環境不假設每台電腦都能穩定連外 build image。OpenCode 版本與 default/base 環境 revision 由 `.devcontainer/image.profile` 定義：
 
 ```text
-OPENCODE_VERSION="1.4.7"
-ENV_REVISION="1"
-IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
+OPENCODE_VERSION=1.4.7
+ENV_REVISION=1
+IMAGE_TAG=1.4.7-env.1
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:1.4.7-env.1
 ```
 
 tag 格式是：
@@ -186,19 +181,21 @@ tag 格式是：
 localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
 ```
 
-維護者若要解析目前可安裝的 OpenCode 版本，只在 release host 上執行：
+git 只追蹤 script、設定檔與文件。`.docker_imgs/*.tar` 是公司內網發布包的一部分，不 commit 到 git。
+
+維護者若要解析目前可安裝的 OpenCode 版本，只在版本更新主機上執行：
 
 ```bash
 ./admin/update-opencode-version.sh
 ```
 
-這個 script 會使用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。如果 OpenCode 版本有變，`ENV_REVISION` 預設重設為 `1`；如果版本沒變，會保留目前 revision。若 default/base 環境在同一個 OpenCode 版本下有變更，維護者應手動增加 `ENV_REVISION`，或執行：
+這個 script 會使用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile`。如果 OpenCode 版本有變，`ENV_REVISION` 預設重設為 `1`；如果版本沒變，會保留目前 revision。若 default/base 環境在同一個 OpenCode 版本下有變更，維護者應手動增加 `ENV_REVISION`，或執行：
 
 ```bash
 ./admin/update-opencode-version.sh --env-revision 2
 ```
 
-一般 build 不會再依 build 結果決定 tag，而是照 `image.profile` 指定版本安裝並驗證。預設採用 `.devcontainer/Dockerfile.insecure`，先確保內網可用。建立並打包 tar：
+公司內部只需要一台 build 主機負責建立 Docker image 與輸出 tar。一般 build 不會再依 build 結果決定 tag，而是照 `image.profile` 指定版本安裝並驗證。預設採用 `.devcontainer/Dockerfile.insecure`，先確保內網可用。建立並打包 tar：
 
 ```bash
 ./admin/build-image.sh
@@ -220,21 +217,23 @@ localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
 
 若 `admin/ca/` 裡沒有任何 `.crt`，script 會停止並提示無法建立。
 
-`build-image.sh` 會把 `OPENCODE_VERSION` 傳入 Dockerfile，驗證 build 出來的 `opencode --version` 與 `image.profile` 一致，並更新 `localhost/opencode-dev-yuta:base` alias。這些檔案應一併 commit 到 repo，讓使用者拉取新版後可以直接執行 `./init.sh` 安裝。
+`build-image.sh` 會把 `OPENCODE_VERSION` 傳入 Dockerfile，驗證 build 出來的 `opencode --version` 與 `image.profile` 一致，並更新 `localhost/opencode-dev-yuta:base` alias。
 
-預設輸出：
+預設輸出本機發布用 tar：
 
 ```text
 .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
-使用者拿到 tar 後，在自己的電腦載入 image：
+這個 tar 不 commit 到 git。發布時把 repo 內容與 `.docker_imgs/*.tar` 一起打包成公司內網發布包。使用者拿到發布包後，在自己的電腦載入 image：
 
 ```bash
 bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
-`install-image.sh` 只接受直接放在 `.docker_imgs/` 下、檔名符合 `opencode-dev-yuta-*.tar` 的 tar。它不接受 URL、不接受其他資料夾，也不遞迴搜尋子資料夾。tar 內必須含有 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>` 的 image。載入成功後，如果 host launcher 已經安裝，它會同步更新 `~/.local/bin/opencode-dev-yuta/image.profile` 與 `~/.local/bin/opencode-dev-yuta/compose.env`。`install-image.sh` 不會修改 repo 內的 `.devcontainer/image.profile` 或 `.devcontainer/compose.env`，這些檔案由 release script 維護並 commit 到 repo。
+`install-image.sh` 只接受直接放在 `.docker_imgs/` 下、檔名符合 `opencode-dev-yuta-*.tar` 的 tar。它不接受 URL、不接受其他資料夾，也不遞迴搜尋子資料夾。tar 內必須含有 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>` 的 image。
+
+載入成功後，如果 host launcher 已經安裝，它會同步更新 `~/.local/bin/opencode-dev-yuta/image.profile`。`install-image.sh` 不會修改 repo 內的 `.devcontainer/image.profile`；repo 內的 `image.profile` 由版本更新主機維護並 commit 到 git。
 
 如果 `.devcontainer/image.profile` 已指定 `IMAGE_TAG`，`install-image.sh` 只會接受 exact image：
 
@@ -410,7 +409,7 @@ volumes:
   - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
 ```
 
-`opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE`、`OPENCODE_DEV_WORKSPACE` 與 `OPENCODE_DEV_USER_CONFIG`。base image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
+`opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE`、`OPENCODE_DEV_WORKSPACE` 與 `OPENCODE_DEV_USER_CONFIG`。base image 由 `image.profile` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
 
 image 啟動時會先進入 entrypoint。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 在大多數情境下都能直接讀寫。
 
@@ -462,8 +461,8 @@ docker volume rm opencode-home-yuta opencode-state-yuta
 目前定型設計不使用 `.env`。原因是日常使用者不需要修改 container 拓樸：
 
 ```text
-base image       固定在 compose.env
-image tag        build/install/update 後寫入 compose.env 與 image.profile
+base image       固定在 image.profile
+image tag        build/install/update 後寫入 image.profile
 base alias       build/install/update 後指向 localhost/opencode-dev-yuta:base
 container name   固定為 opencode-dev-yuta
 state volumes    固定為 opencode-home-yuta / opencode-state-yuta
@@ -471,7 +470,7 @@ project mount    由 opencode-dev 的 path 參數或 pwd 決定
 profile files    由 ~/.opencode-dev-yuta 與 <project>/.opencode-dev-yuta 提供
 ```
 
-若需要調整 image、volume、Compose 或 OpenCode config，由維護者直接修改 repo 內的腳本或 Compose 設定即可。一般使用者只需要先安裝 image tar，之後執行：
+若需要調整 image、volume、Compose 或 OpenCode config，由維護者直接修改 repo 內的腳本或 Compose 設定即可。一般使用者只需要取得內網發布包，先安裝其中的 image tar，之後執行：
 
 ```bash
 cd /path/to/project
@@ -486,22 +485,22 @@ opencode-dev /path/to/project
 
 ## 與 Compose 的關係
 
-`.devcontainer/docker-compose.yml` 是日常 `opencode-dev` 的主要 container 設定來源。`opencode-dev` 不直接用 `docker run` 啟動 container；它讀取 `.devcontainer/compose.env` 作為固定 base image 來源，必要時先 build profile image，並把實際要執行的 image 與目前專案路徑透過環境變數傳給 Compose：
+`.devcontainer/docker-compose.yml` 是日常 `opencode-dev` 的主要 container 設定來源。`opencode-dev` 不直接用 `docker run` 啟動 container；它讀取 `.devcontainer/image.profile` 作為固定 base image 來源，必要時先 build profile image，並把實際要執行的 image 與目前專案路徑透過環境變數傳給 Compose：
 
 ```bash
 OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta-env:<profile-tag> \
 OPENCODE_DEV_WORKSPACE=/path/to/project \
-docker compose --env-file .devcontainer/compose.env -f .devcontainer/docker-compose.yml run --rm --name opencode-dev-yuta opencode opencode
+docker compose --env-file .devcontainer/image.profile -f .devcontainer/docker-compose.yml run --rm --name opencode-dev-yuta opencode opencode
 ```
 
-如果要用 Compose 手動除錯，使用 `compose.env` 中固定的 image：
+如果要用 Compose 手動除錯，使用 `image.profile` 中固定的 image：
 
 ```bash
 OPENCODE_DEV_WORKSPACE=/path/to/project \
-docker compose --env-file .devcontainer/compose.env -f .devcontainer/docker-compose.yml run --rm opencode bash
+docker compose --env-file .devcontainer/image.profile -f .devcontainer/docker-compose.yml run --rm opencode bash
 ```
 
-如果直接使用 Compose，必須提供 `--env-file .devcontainer/compose.env`，並設定 `OPENCODE_DEV_WORKSPACE`。日常入口仍然應使用 `opencode-dev`，這樣使用者只需要輸入專案位置或直接使用目前位置。
+如果直接使用 Compose，必須提供 `--env-file .devcontainer/image.profile`，並設定 `OPENCODE_DEV_WORKSPACE`。日常入口仍然應使用 `opencode-dev`，這樣使用者只需要輸入專案位置或直接使用目前位置。
 
 ## 指令摘要
 
@@ -521,13 +520,13 @@ bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 ./admin/build-image.sh
 ```
 
-從 `.devcontainer/Dockerfile.insecure` build image，依 `.devcontainer/image.profile` 指定的 OpenCode 版號與 env revision tag 成 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>`，更新 base alias，並輸出 Docker image tar。
+從 `.devcontainer/Dockerfile.insecure` build image，依 `.devcontainer/image.profile` 指定的 OpenCode 版號與 env revision tag 成 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>`，更新 base alias，並輸出公司內網發布包使用的 Docker image tar。tar 不 commit 到 git。
 
 ```bash
 ./admin/update-opencode-version.sh
 ```
 
-只在 release host 上建立暫時 image 解析目前 OpenCode 版本，並寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。
+只在版本更新主機上建立暫時 image 解析目前 OpenCode 版本，並寫回 `.devcontainer/image.profile`。
 
 ```bash
 ./admin/ca/collect-ca.sh
@@ -545,7 +544,7 @@ bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
-把 image tar 載入本機 Docker。不會修改 repo 內的 `image.profile` 或 `compose.env`。
+把 image tar 載入本機 Docker。不會修改 repo 內的 `image.profile`。
 
 ```bash
 bash .devcontainer/scripts/init/install-image.sh

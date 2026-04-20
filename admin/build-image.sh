@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
-COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
 ENV_REVISION=""
@@ -140,12 +139,10 @@ mkdir -p "${PROJECT_ROOT}/.docker_imgs"
 tar_path="${PROJECT_ROOT}/.docker_imgs/opencode-dev-yuta-${IMAGE_TAG}.tar"
 
 cat > "${IMAGE_PROFILE}" <<EOF
-IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-OPENCODE_VERSION="${OPENCODE_VERSION}"
-ENV_REVISION="${ENV_REVISION}"
-IMAGE_TAG="\${OPENCODE_VERSION}-env.\${ENV_REVISION}"
-EOF
-cat > "${COMPOSE_ENV}" <<EOF
+IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
+OPENCODE_VERSION=${OPENCODE_VERSION}
+ENV_REVISION=${ENV_REVISION}
+IMAGE_TAG=${IMAGE_TAG}
 OPENCODE_DEV_IMAGE=${image_name}
 EOF
 printf 'Saving %s to %s\n' "${image_name}" "${tar_path}"
@@ -154,5 +151,4 @@ docker save --output "${tar_path}" "${image_name}"
 printf 'Built image: %s\n' "${image_name}"
 printf 'Updated base alias: %s\n' "${base_alias}"
 printf 'Wrote image profile: %s\n' "${IMAGE_PROFILE}"
-printf 'Wrote compose env: %s\n' "${COMPOSE_ENV}"
 printf 'Wrote tar: %s\n' "${tar_path}"

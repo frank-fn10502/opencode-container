@@ -2,15 +2,18 @@
 
 這個資料夾只給維護者使用。一般使用者只需要 `./init.sh` 與 `opencode-dev`，不需要執行這裡的 script。
 
+git 只追蹤 script、設定檔與文件。`.docker_imgs/*.tar` 是公司內網發布包的一部分，不 commit 到 git。
+
 ## 版本模型
 
 image 版本由 `.devcontainer/image.profile` 定義：
 
 ```sh
-IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
-OPENCODE_VERSION="1.4.7"
-ENV_REVISION="1"
-IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
+IMAGE_REPOSITORY=localhost/opencode-dev-yuta
+OPENCODE_VERSION=1.4.7
+ENV_REVISION=1
+IMAGE_TAG=1.4.7-env.1
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:1.4.7-env.1
 ```
 
 `OPENCODE_VERSION` 是 Dockerfile 會安裝的 OpenCode 版本。
@@ -30,14 +33,16 @@ IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 ./admin/build-image.sh
 ```
 
-需要解析目前可安裝的 OpenCode 版本時，才執行：
+需要解析目前可安裝的 OpenCode 版本時，只在版本更新主機執行：
 
 ```bash
 ./admin/update-opencode-version.sh
 ./admin/build-image.sh
 ```
 
-`update-opencode-version.sh` 會用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。其他主機不需要執行這個步驟。
+`update-opencode-version.sh` 會用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile`。其他主機不需要執行這個步驟。
+
+公司內部只需要一台 build 主機執行 `build-image.sh` 或 `build-ca-image.sh`，產生 `.docker_imgs/` 下的 tar。發布時把 repo 內容與 `.docker_imgs/*.tar` 一起打包成內網發布包；git 仍然只 commit script、設定檔與文件。
 
 如果公司需要匯入 CA，相關流程集中在 [ca/README.md](ca/README.md)。常用入口：
 
@@ -52,19 +57,22 @@ IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 ./admin/build-image.sh
 ```
 
-build 成功後會輸出：
+build 成功後會輸出本機發布用 tar：
 
 ```text
 .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
 ```
 
-請將以下內容一起 commit：
+請 commit 有變更的 script、設定檔與文件，例如：
 
 ```text
 .devcontainer/image.profile
-.devcontainer/compose.env
-.docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar
+admin/
+.devcontainer/scripts/
+.devcontainer/docs/
 ```
+
+不要 commit `.docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar`。這個檔案只放進公司內網發布包。
 
 ## Docker Hub
 

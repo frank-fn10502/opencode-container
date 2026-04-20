@@ -1,4 +1,5 @@
-IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
-OPENCODE_VERSION="1.14.19"
-ENV_REVISION="1"
-IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
+IMAGE_REPOSITORY=localhost/opencode-dev-yuta
+OPENCODE_VERSION=1.14.19
+ENV_REVISION=1
+IMAGE_TAG=1.14.19-env.1
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:1.14.19-env.1
