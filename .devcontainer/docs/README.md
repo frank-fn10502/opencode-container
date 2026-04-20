@@ -243,6 +243,8 @@ opencode-dev ../other-project
 <project>/.opencode-dev-yuta/
 ```
 
+launcher 會把完整 profile Dockerfile guide 複製到 `~/.opencode-dev-yuta/README.md`，並把很薄的 project README 複製到 `<project>/.opencode-dev-yuta/README.md`。project README 只負責指出完整規則的位置；完整規則仍以 user guide 為準。
+
 ## Profile 模型
 
 profile 是一個 Dockerfile 檔案，檔名固定為：
@@ -267,6 +269,14 @@ project profile 放在：
 
 ```text
 <project>/.opencode-dev-yuta/config.env
+```
+
+profile guide 放在：
+
+```text
+~/.opencode-dev-yuta/README.md                 完整規則與範例
+<project>/.opencode-dev-yuta/README.md         指向完整規則的薄指引
+container: /opencode-dev/user/README.md        user guide 的唯讀掛載
 ```
 
 如果目前專案路徑就是使用者的 home directory，選擇會記錄在：
@@ -337,8 +347,9 @@ opencode-dev 啟動
   -> 如果 selected profile 是 default，直接使用 localhost/opencode-dev-yuta:base
   -> 如果不是 default，找到 Dockerfile.<profile>，project profile 優先於同名 user profile
   -> 若非 default profile image 不存在或已過期，自動 build 或詢問
-  -> OPENCODE_DEV_WORKSPACE=/resolved/host/path docker compose run --rm ...
+  -> OPENCODE_DEV_WORKSPACE=/resolved/host/path OPENCODE_DEV_USER_CONFIG=~/.opencode-dev-yuta docker compose run --rm ...
   -> docker-compose.yml bind mount OPENCODE_DEV_WORKSPACE 到 /workspace
+  -> docker-compose.yml bind mount OPENCODE_DEV_USER_CONFIG 到 /opencode-dev/user:ro
   -> 執行 opencode
   -> opencode 結束後 container 自動移除
 ```
@@ -350,9 +361,10 @@ opencode-dev 啟動
 ```yaml
 volumes:
   - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
+  - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
 ```
 
-`opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE` 與 `OPENCODE_DEV_WORKSPACE`。base image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
+`opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE`、`OPENCODE_DEV_WORKSPACE` 與 `OPENCODE_DEV_USER_CONFIG`。base image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
 
 image 啟動時會先進入 entrypoint。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 在大多數情境下都能直接讀寫。
 

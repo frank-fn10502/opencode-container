@@ -21,6 +21,9 @@ CONTAINER_NAME="opencode-dev-yuta"
 USER_CONFIG_DIR="${HOME}/.opencode-dev-yuta"
 PROJECT_CONFIG_DIR_NAME=".opencode-dev-yuta"
 PROFILE_CONFIG_FILE="config.env"
+PROFILE_README_FILE="README.md"
+USER_PROFILE_README_SOURCE="${DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md"
+PROJECT_PROFILE_README_SOURCE="${DEVCONTAINER_DIR}/config/project-profile-readme.md"
 DEFAULT_PROFILE="default"
 PROJECT_IMAGE_REPOSITORY="localhost/opencode-dev-yuta-env"
 
@@ -109,14 +112,35 @@ profile_warning_marker() {
   printf '%s/.warned-project-overrides.%s\n' "$(project_config_dir "${project_dir}")" "${profile}"
 }
 
+copy_profile_readme() {
+  local config_dir="$1"
+  local source="$2"
+  local readme_path
+
+  readme_path="${config_dir}/${PROFILE_README_FILE}"
+  if [[ -f "${readme_path}" ]]; then
+    return
+  fi
+
+  if [[ ! -f "${source}" ]]; then
+    printf 'Cannot find profile README source: %s\n' "${source}" >&2
+    exit 1
+  fi
+
+  cp "${source}" "${readme_path}"
+}
+
 ensure_project_config() {
   local project_dir="$1"
+  local config_dir
 
   if is_home_project "${project_dir}"; then
     return
   fi
 
-  mkdir -p "$(project_config_dir "${project_dir}")"
+  config_dir="$(project_config_dir "${project_dir}")"
+  mkdir -p "${config_dir}"
+  copy_profile_readme "${config_dir}" "${PROJECT_PROFILE_README_SOURCE}"
 }
 
 resolve_project_dir() {

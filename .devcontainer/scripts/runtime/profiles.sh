@@ -17,6 +17,7 @@ ensure_user_config() {
   local default_profile
 
   mkdir -p "${USER_CONFIG_DIR}"
+  copy_profile_readme "${USER_CONFIG_DIR}" "${USER_PROFILE_README_SOURCE}"
   default_profile="${USER_CONFIG_DIR}/Dockerfile.${DEFAULT_PROFILE}"
   if [[ ! -f "${default_profile}" ]]; then
     write_default_user_profile "${default_profile}"

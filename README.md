@@ -49,6 +49,7 @@ opencode-dev
 ```
 
 這個資料夾用來放該專案自己的 profile，例如 `Dockerfile.python`。
+launcher 也會自動放入一份很薄的 `README.md`，指出完整 profile Dockerfile 規則的位置。
 
 指定專案資料夾：
 
@@ -69,9 +70,10 @@ opencode-dev ../other-project
 ~/.opencode-dev-yuta/Dockerfile.<profile>
 <project>/.opencode-dev-yuta/Dockerfile.<profile>
 <project>/.opencode-dev-yuta/config.env
+<project>/.opencode-dev-yuta/README.md
 ```
 
-user profile 在所有專案都能使用；project profile 只在該專案資料夾下使用。查看目前設定與可用 profile：
+user profile 在所有專案都能使用；project profile 只在該專案資料夾下使用。完整 Dockerfile 規則放在 `~/.opencode-dev-yuta/README.md`；進入 container 後可從 `/opencode-dev/user/README.md` 讀取同一份 user guide。查看目前設定與可用 profile：
 
 ```bash
 opencode-dev profile status

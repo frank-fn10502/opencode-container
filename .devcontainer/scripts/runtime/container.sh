@@ -51,6 +51,7 @@ compose_run_base() {
 
   OPENCODE_DEV_IMAGE="${image}" \
   OPENCODE_DEV_WORKSPACE="${project_dir}" \
+  OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
   docker compose \
     --env-file "${COMPOSE_ENV}" \
     --file "${COMPOSE_FILE}" \

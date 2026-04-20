@@ -111,6 +111,8 @@ install_runtime() {
   cp "${DEVCONTAINER_DIR}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
   cp "${DEVCONTAINER_DIR}/compose.env" "${INSTALL_DIR}/compose.env"
   cp "${DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
+  cp "${DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md" "${INSTALL_DIR}/config/profile-dockerfile-guide.md"
+  cp "${DEVCONTAINER_DIR}/config/project-profile-readme.md" "${INSTALL_DIR}/config/project-profile-readme.md"
   cp "${IMAGE_PROFILE}" "${INSTALL_DIR}/image.profile"
   chmod 755 "${INSTALL_DIR}/bin/opencode-dev"
   chmod 755 "${INSTALL_DIR}/runtime/opencode-dev.sh"
