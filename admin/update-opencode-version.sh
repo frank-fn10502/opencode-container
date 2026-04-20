@@ -28,7 +28,7 @@ build-image.sh, which uses the pinned version from image.profile.
 Options:
   --dockerfile FILE
               Build from a Dockerfile under .devcontainer/.
-              Default: Dockerfile
+              Default: Dockerfile.insecure
   --env-revision N
               Set the environment revision for the resolved OpenCode version.
               Default: keep the current revision if the OpenCode version is
@@ -43,7 +43,7 @@ extract_version() {
   grep -Eo '[0-9]+(\.[0-9]+)+([-+._A-Za-z0-9]*)?' | head -n 1
 }
 
-dockerfile_name="Dockerfile"
+dockerfile_name="Dockerfile.insecure"
 requested_env_revision=""
 build_args=()
 

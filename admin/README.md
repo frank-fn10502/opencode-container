@@ -19,6 +19,8 @@ IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 
 非必要不要執行 `update-opencode-version.sh`。大多數維護工作只需要調整 Dockerfile 或設定，必要時 bump `ENV_REVISION`，然後執行 `build-image.sh`。
 
+預設 build 採用 `.devcontainer/Dockerfile.insecure`。內網環境先求能跑，再視需要建立 CA-aware image。
+
 ## 常見流程
 
 只改 default/base 環境，但 OpenCode 版本不變：
@@ -37,18 +39,25 @@ IMAGE_TAG="${OPENCODE_VERSION}-env.${ENV_REVISION}"
 
 `update-opencode-version.sh` 會用 `OPENCODE_VERSION=latest` 建立暫時 image，讀取 `opencode --version`，再寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。其他主機不需要執行這個步驟。
 
-如果公司需要匯入 CA：
+如果公司需要匯入 CA，先把 `.crt` 放進 `admin/ca/`：
 
-```bash
-./admin/build-image.sh \
-  --dockerfile Dockerfile \
-  --build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
+```text
+admin/ca/company-root-ca.crt
+admin/ca/company-intermediate-ca.crt
 ```
 
-如果需要全面放寬 SSL 檢查：
+然後執行：
 
 ```bash
-./admin/build-image.sh --dockerfile Dockerfile.insecure
+./admin/build-ca-image.sh
+```
+
+如果 `admin/ca/` 裡沒有任何 `.crt`，`build-ca-image.sh` 會停止並提示無法建立 CA image。
+
+一般內網預設 build 已經採用全面放寬 SSL 檢查的 insecure Dockerfile：
+
+```bash
+./admin/build-image.sh
 ```
 
 build 成功後會輸出：

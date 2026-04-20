@@ -29,7 +29,7 @@ under .docker_imgs/.
 Options:
   --dockerfile FILE
               Build from a Dockerfile under .devcontainer/.
-              Default: Dockerfile
+              Default: Dockerfile.insecure
   --build-arg KEY=VALUE
               Pass through one build arg. Repeatable.
   -h, --help    Show this help.
@@ -40,7 +40,7 @@ extract_version() {
   grep -Eo '[0-9]+(\.[0-9]+)+([-+._A-Za-z0-9]*)?' | head -n 1
 }
 
-dockerfile_name="Dockerfile"
+dockerfile_name="Dockerfile.insecure"
 build_args=()
 
 while [[ $# -gt 0 ]]; do

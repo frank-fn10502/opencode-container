@@ -76,8 +76,10 @@ repo 內的 script 依用途分成三類：
 
 admin/
   README.md                   維護者 build/update/push/pull 說明
+  ca/                         CA-aware build 的 .crt 放置目錄
   update-opencode-version.sh  維護者解析 latest OpenCode 版本並寫入設定
-  build-image.sh              維護者 build base image 與輸出 tar
+  build-image.sh              維護者 build insecure base image 與輸出 tar
+  build-ca-image.sh           維護者從 admin/ca/*.crt build CA-aware image
   push-dockerhub.sh           維護者推送 image
   pull-and-pack-image.sh      維護者下載 image 並重新打包 tar
 ```
@@ -194,11 +196,19 @@ localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
 ./admin/update-opencode-version.sh --env-revision 2
 ```
 
-一般 build 不會再依 build 結果決定 tag，而是照 `image.profile` 指定版本安裝並驗證。建立並打包 tar：
+一般 build 不會再依 build 結果決定 tag，而是照 `image.profile` 指定版本安裝並驗證。預設採用 `.devcontainer/Dockerfile.insecure`，先確保內網可用。建立並打包 tar：
 
 ```bash
 ./admin/build-image.sh
 ```
+
+如果要建立 CA-aware image，先把 `.crt` 放進 `admin/ca/`，再執行：
+
+```bash
+./admin/build-ca-image.sh
+```
+
+若 `admin/ca/` 裡沒有任何 `.crt`，script 會停止並提示無法建立。
 
 `build-image.sh` 會把 `OPENCODE_VERSION` 傳入 Dockerfile，驗證 build 出來的 `opencode --version` 與 `image.profile` 一致，並更新 `localhost/opencode-dev-yuta:base` alias。這些檔案應一併 commit 到 repo，讓使用者拉取新版後可以直接執行 `./init.sh` 安裝。
 
