@@ -76,10 +76,12 @@ repo 內的 script 依用途分成三類：
 
 admin/
   README.md                   維護者 build/update/push/pull 說明
-  ca/                         CA-aware build 的 .crt 放置目錄
+  ca/                         CA-aware build 的 .crt 與 CA script
+    README.md                 CA 收集與 CA-aware build 說明
+    collect-ca.sh             嘗試從常見 registry TLS chain 收集 root CA
+    build-ca-image.sh         從 admin/ca/*.crt build CA-aware image
   update-opencode-version.sh  維護者解析 latest OpenCode 版本並寫入設定
   build-image.sh              維護者 build insecure base image 與輸出 tar
-  build-ca-image.sh           維護者從 admin/ca/*.crt build CA-aware image
   push-dockerhub.sh           維護者推送 image
   pull-and-pack-image.sh      維護者下載 image 並重新打包 tar
 ```
@@ -205,8 +207,16 @@ localhost/opencode-dev-yuta:<opencode-version>-env.<revision>
 如果要建立 CA-aware image，先把 `.crt` 放進 `admin/ca/`，再執行：
 
 ```bash
-./admin/build-ca-image.sh
+./admin/ca/build-ca-image.sh
 ```
+
+也可以先嘗試自動收集常見 registry 在 TLS handshake 中回傳的 certificate chain：
+
+```bash
+./admin/ca/collect-ca.sh
+```
+
+這個 script 先使用 `openssl s_client -showcerts` 看到的憑證，預設保存 `Basic Constraints: CA:TRUE` 的憑證；如果 TLS response 沒有送出 self-signed root CA，會再嘗試依照 AIA CA Issuers URL 取得 root CA。AIA 只支援 `http://` 與 `https://` URL；如果公司憑證只提供 `ldap:///...`，script 會提示無法下載，仍需從 OS/browser trust store 匯出公司 root CA。可用 `--no-aia` 停用 AIA；除錯時可用 `--save-chain`、`--save-leaf` 或 `--save-chain-top`。
 
 若 `admin/ca/` 裡沒有任何 `.crt`，script 會停止並提示無法建立。
 
@@ -511,7 +521,7 @@ bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 ./admin/build-image.sh
 ```
 
-從 `.devcontainer/Dockerfile`（CA 模式）build image，依 `.devcontainer/image.profile` 指定的 OpenCode 版號與 env revision tag 成 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>`，更新 base alias，並輸出 Docker image tar。
+從 `.devcontainer/Dockerfile.insecure` build image，依 `.devcontainer/image.profile` 指定的 OpenCode 版號與 env revision tag 成 `localhost/opencode-dev-yuta:<opencode-version>-env.<revision>`，更新 base alias，並輸出 Docker image tar。
 
 ```bash
 ./admin/update-opencode-version.sh
@@ -520,18 +530,16 @@ bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 只在 release host 上建立暫時 image 解析目前 OpenCode 版本，並寫回 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。
 
 ```bash
-./admin/build-image.sh --dockerfile Dockerfile.insecure
+./admin/ca/collect-ca.sh
 ```
 
-使用 `.devcontainer/Dockerfile.insecure` build image，預設放寬 apt/npm/pip/curl/wget 的 SSL 驗證設定。
+嘗試從 Docker Hub、npm、PyPI、Debian apt 與 Microsoft package registry 的 TLS response 收集憑證鏈到 `admin/ca/`。
 
 ```bash
-./admin/build-image.sh \
-  --dockerfile Dockerfile \
-  --build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
+./admin/ca/build-ca-image.sh
 ```
 
-在 CA 模式下傳入公司 CA（base64）並更新系統 trust store。
+從 `.devcontainer/Dockerfile`（CA 模式）build image。會讀取 `admin/ca/*.crt`，沒有 `.crt` 時停止並提示無法建立。
 
 ```bash
 bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>-env.<revision>.tar

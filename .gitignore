@@ -22,4 +22,7 @@ opencode-output/*
 .docker_imgs/*
 !.docker_imgs/.gitkeep
 
+# Company CA certificates can be collected or placed locally for admin builds.
+admin/ca/*.crt
+
 test_opencode/logs/

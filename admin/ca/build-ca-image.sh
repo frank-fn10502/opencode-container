@@ -3,11 +3,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CA_DIR="${SCRIPT_DIR}/ca"
+ADMIN_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+CA_DIR="${SCRIPT_DIR}"
 
 usage() {
   cat <<'USAGE'
-Usage: admin/build-ca-image.sh [--dockerfile FILE] [--build-arg KEY=VALUE]...
+Usage: admin/ca/build-ca-image.sh [--dockerfile FILE] [--build-arg KEY=VALUE]...
 
 Build the CA-aware OpenCode dev image. Place one or more .crt files under
 admin/ca/ before running this script.
@@ -88,7 +89,7 @@ for crt in "${crt_files[@]}"; do
   printf '  %s\n' "${crt#${SCRIPT_DIR}/}"
 done
 
-"${SCRIPT_DIR}/build-image.sh" \
+"${ADMIN_DIR}/build-image.sh" \
   --dockerfile "${dockerfile_name}" \
   --build-arg "COMPANY_CA_CERT_B64=${ca_b64}" \
   "${build_args[@]}"
