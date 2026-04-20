@@ -1,0 +1,58 @@
+FROM localhost/opencode-dev-yuta:base
+
+ENV PATH="/home/opencode/.local/bin:${PATH}"
+
+USER root
+
+# Install native headers and clients that Python developers commonly need.
+# libffi-dev/libssl-dev support cryptography and auth packages.
+# libpq-dev/default-libmysqlclient-dev support PostgreSQL and MySQL client bindings.
+# Pillow and lxml often need image/XML headers even when wheels are unavailable.
+# sqlite3/postgresql-client/default-mysql-client are useful for local debugging and migrations.
+# jq/unzip/zip are small everyday utilities frequently used by test and release scripts.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        default-libmysqlclient-dev \
+        default-mysql-client \
+        jq \
+        libffi-dev \
+        libfreetype6-dev \
+        libjpeg-dev \
+        liblcms2-dev \
+        libopenjp2-7-dev \
+        libpng-dev \
+        libpq-dev \
+        libssl-dev \
+        libtiff-dev \
+        libwebp-dev \
+        libxml2-dev \
+        libxslt1-dev \
+        libyaml-dev \
+        pkg-config \
+        postgresql-client \
+        sqlite3 \
+        unzip \
+        zip \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+USER opencode
+
+# Install Python CLI tools with pipx so each tool gets an isolated environment.
+# uv is the modern fast package/project manager; poetry and hatch cover established packaging workflows.
+# ruff handles fast linting/formatting; black remains common in existing projects.
+# mypy/pyright cover static typing; pytest/tox/nox cover common test automation flows.
+# pre-commit is widely used for repository hooks; ipython/httpie improve day-to-day debugging.
+RUN pipx install uv \
+    && pipx install poetry \
+    && pipx install hatch \
+    && pipx install ruff \
+    && pipx install black \
+    && pipx install mypy \
+    && pipx install pyright \
+    && pipx install pytest \
+    && pipx install tox \
+    && pipx install nox \
+    && pipx install pre-commit \
+    && pipx install ipython \
+    && pipx install httpie

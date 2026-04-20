@@ -1,0 +1,35 @@
+FROM localhost/opencode-dev-yuta:base
+
+ENV PATH="/home/opencode/.dotnet/tools:${PATH}"
+
+USER root
+
+# Add Microsoft's Debian 12 package feed because the base image does not include dotnet packages.
+# The base image is Debian bookworm, so use the Debian 12 feed.
+RUN wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb \
+    && dpkg -i /tmp/packages-microsoft-prod.deb \
+    && rm /tmp/packages-microsoft-prod.deb
+
+# Install the .NET SDK instead of only the runtime so OpenCode can build, test, and restore projects.
+# Microsoft Learn lists dotnet-sdk-10.0 as a supported Debian 12 SDK package.
+# unzip/zip are used by many .NET build scripts and release packaging steps.
+# jq is useful for inspecting generated JSON such as test reports and appsettings files.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        dotnet-sdk-10.0 \
+        jq \
+        unzip \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+USER opencode
+
+# Install common .NET global tools into the opencode user's home.
+# dotnet-ef is the standard EF Core migration/database CLI used by many web/API projects.
+# CSharpier provides opinionated C# formatting for teams that do not rely only on IDE formatting.
+# ReportGenerator turns coverage output into readable reports for local and CI debugging.
+# dotnet-outdated reports stale NuGet dependencies from the command line.
+RUN dotnet tool install --global dotnet-ef \
+    && dotnet tool install --global csharpier \
+    && dotnet tool install --global dotnet-reportgenerator-globaltool \
+    && dotnet tool install --global dotnet-outdated-tool

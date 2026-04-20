@@ -113,6 +113,7 @@ install_runtime() {
   cp "${DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
   cp "${DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md" "${INSTALL_DIR}/config/profile-dockerfile-guide.md"
   cp "${DEVCONTAINER_DIR}/config/project-profile-readme.md" "${INSTALL_DIR}/config/project-profile-readme.md"
+  cp -R "${DEVCONTAINER_DIR}/config/user-profiles" "${INSTALL_DIR}/config/user-profiles"
   cp "${IMAGE_PROFILE}" "${INSTALL_DIR}/image.profile"
   chmod 755 "${INSTALL_DIR}/bin/opencode-dev"
   chmod 755 "${INSTALL_DIR}/runtime/opencode-dev.sh"

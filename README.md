@@ -79,10 +79,21 @@ user profile 在所有專案都能使用；project profile 只在該專案資料
 opencode-dev profile status
 ```
 
-預設 profile 名稱是 `default`，它會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。設定 profile 並開啟 OpenCode：
+預設 profile 名稱是 `default`，它會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。
+
+launcher 會同步幾個內建 user profile template 到 user profile 目錄，並在工具更新後覆蓋同名內建檔案。除了保留名稱 `default` 之外，內建 profile 都使用 `opencode-` 前綴，避免和使用者自訂名稱撞名：
+
+```text
+Dockerfile.default
+Dockerfile.opencode-python
+Dockerfile.opencode-dotnet
+Dockerfile.opencode-npm
+```
+
+設定 profile 並開啟 OpenCode：
 
 ```bash
-opencode-dev profile set python
+opencode-dev profile set opencode-python
 ```
 
 切回預設 profile：

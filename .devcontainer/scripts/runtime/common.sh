@@ -24,6 +24,7 @@ PROFILE_CONFIG_FILE="config.env"
 PROFILE_README_FILE="README.md"
 USER_PROFILE_README_SOURCE="${DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md"
 PROJECT_PROFILE_README_SOURCE="${DEVCONTAINER_DIR}/config/project-profile-readme.md"
+USER_PROFILE_TEMPLATE_DIR="${DEVCONTAINER_DIR}/config/user-profiles"
 DEFAULT_PROFILE="default"
 PROJECT_IMAGE_REPOSITORY="localhost/opencode-dev-yuta-env"
 

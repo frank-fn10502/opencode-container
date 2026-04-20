@@ -1,0 +1,5 @@
+FROM localhost/opencode-dev-yuta:base
+
+# Keep the default profile intentionally empty.
+# It documents the base image entrypoint without adding packages or changing behavior.
+USER opencode

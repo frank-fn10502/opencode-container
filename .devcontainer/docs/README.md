@@ -292,23 +292,25 @@ container: /opencode-dev/user/README.md        user guide 的唯讀掛載
 ```text
 user profiles:
   frank/Dockerfile.default
+  frank/Dockerfile.opencode-python
 
 project profiles:
   service-api/Dockerfile.python
 ```
 
-預設 profile 是 `default`。launcher 會在 `~/.opencode-dev-yuta/Dockerfile.default` 不存在時自動建立一個最小 Dockerfile：
+預設 profile 是 `default`。launcher 會從 `.devcontainer/config/user-profiles/` 同步內建 user profile template 到 `~/.opencode-dev-yuta/`，並在工具更新後覆蓋同名內建檔案。除了保留名稱 `default` 之外，內建 profile 都使用 `opencode-` 前綴，避免和使用者自訂名稱撞名：
 
-```dockerfile
-FROM localhost/opencode-dev-yuta:base
-
-USER opencode
+```text
+Dockerfile.default
+Dockerfile.opencode-python
+Dockerfile.opencode-dotnet
+Dockerfile.opencode-npm
 ```
 
 `default` profile 啟動時會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。指定 profile 並開啟 OpenCode：
 
 ```bash
-opencode-dev profile set python
+opencode-dev profile set opencode-python
 ```
 
 切回預設 profile：

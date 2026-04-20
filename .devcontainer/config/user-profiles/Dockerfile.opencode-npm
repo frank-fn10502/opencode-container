@@ -1,0 +1,37 @@
+FROM localhost/opencode-dev-yuta:base
+
+USER root
+
+# Install native libraries and small CLIs often needed by Node packages and frontend tooling.
+# python3/make/g++ are already common node-gyp needs; build-essential is in the base image, but these
+# explicit packages keep this profile self-documenting if the base image changes later.
+# jq/unzip/zip support everyday package scripts, release archives, and generated JSON inspection.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        g++ \
+        jq \
+        make \
+        python3 \
+        unzip \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install common JavaScript package managers, monorepo tools, and project bootstrap CLIs globally.
+# pnpm/yarn cover package-manager choices; turbo/nx cover monorepo workflows.
+# typescript/tsx support TypeScript compilation and script execution before project deps are installed.
+# eslint/prettier are common lint/format CLIs, useful when a repo does not vendor them yet.
+# npm-check-updates helps inspect and update dependency ranges while preserving package manager choice.
+# vite gives AI/users a common frontend scaffold/dev command without waiting for a project install.
+RUN npm install -g \
+        eslint \
+        npm-check-updates \
+        prettier \
+        pnpm \
+        tsx \
+        turbo \
+        typescript \
+        vite \
+        yarn \
+        nx
+
+USER opencode

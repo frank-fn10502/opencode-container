@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
 
-write_default_user_profile() {
-  local profile_path="$1"
-  local base_alias
+copy_user_profile_templates() {
+  local template
+  local target
 
-  base_alias="$(base_alias_ref)"
+  if [[ ! -d "${USER_PROFILE_TEMPLATE_DIR}" ]]; then
+    printf 'Cannot find user profile template dir: %s\n' "${USER_PROFILE_TEMPLATE_DIR}" >&2
+    exit 1
+  fi
 
-  cat > "${profile_path}" <<EOF
-FROM ${base_alias}
+  for template in "${USER_PROFILE_TEMPLATE_DIR}"/Dockerfile.*; do
+    if [[ ! -f "${template}" ]]; then
+      continue
+    fi
 
-USER opencode
-EOF
+    target="${USER_CONFIG_DIR}/$(basename "${template}")"
+    cp "${template}" "${target}"
+  done
 }
 
 ensure_user_config() {
-  local default_profile
-
   mkdir -p "${USER_CONFIG_DIR}"
   copy_profile_readme "${USER_CONFIG_DIR}" "${USER_PROFILE_README_SOURCE}"
-  default_profile="${USER_CONFIG_DIR}/Dockerfile.${DEFAULT_PROFILE}"
-  if [[ ! -f "${default_profile}" ]]; then
-    write_default_user_profile "${default_profile}"
-  fi
+  copy_user_profile_templates
 }
 
 validate_profile_name() {
