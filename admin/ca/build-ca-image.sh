@@ -89,7 +89,14 @@ for crt in "${crt_files[@]}"; do
   printf '  %s\n' "${crt#${SCRIPT_DIR}/}"
 done
 
-"${ADMIN_DIR}/build-image.sh" \
-  --dockerfile "${dockerfile_name}" \
-  --build-arg "COMPANY_CA_CERT_B64=${ca_b64}" \
-  "${build_args[@]}"
+build_cmd=(
+  "${ADMIN_DIR}/build-image.sh"
+  --dockerfile "${dockerfile_name}"
+  --build-arg "COMPANY_CA_CERT_B64=${ca_b64}"
+)
+
+if (( ${#build_args[@]} > 0 )); then
+  build_cmd+=("${build_args[@]}")
+fi
+
+"${build_cmd[@]}"

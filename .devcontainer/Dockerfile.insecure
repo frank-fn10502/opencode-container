@@ -50,11 +50,11 @@ RUN apt-get update \
 
 RUN printf 'check_certificate = off\n' > /etc/wgetrc
 
-RUN npm config set strict-ssl false \
-    && npm config set registry http://registry.npmjs.org/ \
-    && npm config set fetch-retries 5 \
-    && npm config set fetch-retry-mintimeout 20000 \
-    && npm config set fetch-retry-maxtimeout 120000
+RUN npm config set --global strict-ssl false \
+    && npm config set --global registry http://registry.npmjs.org/ \
+    && npm config set --global fetch-retries 5 \
+    && npm config set --global fetch-retry-mintimeout 20000 \
+    && npm config set --global fetch-retry-maxtimeout 120000
 
 RUN pip3 config --global set global.trusted-host "pypi.org files.pythonhosted.org pypi.python.org" \
     && pip3 config --global set global.timeout 120 \

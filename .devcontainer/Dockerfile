@@ -42,10 +42,10 @@ RUN if [ -n "${COMPANY_CA_CERT_B64}" ]; then \
       update-ca-certificates; \
     fi
 
-RUN npm config set cafile /etc/ssl/certs/ca-certificates.crt \
-    && npm config set fetch-retries 5 \
-    && npm config set fetch-retry-mintimeout 20000 \
-    && npm config set fetch-retry-maxtimeout 120000
+RUN npm config set --global cafile /etc/ssl/certs/ca-certificates.crt \
+    && npm config set --global fetch-retries 5 \
+    && npm config set --global fetch-retry-mintimeout 20000 \
+    && npm config set --global fetch-retry-maxtimeout 120000
 
 RUN pip3 config --global set global.cert /etc/ssl/certs/ca-certificates.crt \
     && pip3 config --global set global.timeout 120 \

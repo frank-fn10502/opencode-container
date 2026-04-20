@@ -146,8 +146,8 @@ split_chain() {
   awk -v prefix="${prefix}" '
     /-----BEGIN CERTIFICATE-----/ {
       in_cert = 1
-      index += 1
-      file = sprintf("%s-%02d.crt", prefix, index)
+      cert_index += 1
+      file = sprintf("%s-%02d.crt", prefix, cert_index)
     }
     in_cert {
       print > file
@@ -157,7 +157,7 @@ split_chain() {
       close(file)
     }
     END {
-      print index + 0
+      print cert_index + 0
     }
   ' "${input}"
 }
