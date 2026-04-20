@@ -11,6 +11,8 @@
 - 使用者不需要修改 Compose 或 `.env` 設定。
 - 每次啟動時，把目標專案目錄 bind mount 到 container 的 `/workspace`。
 - 如果沒有指定目標目錄，就使用執行 `opencode-dev` 時的目前 `pwd`。
+- 每個專案第一次執行 `opencode-dev` 時都會建立 `.opencode-dev-yuta/`，用來放 project profile。
+- user profile 放在 `~/.opencode-dev-yuta/Dockerfile.<profile>`；project profile 放在 `<project>/.opencode-dev-yuta/Dockerfile.<profile>`。
 - OpenCode 的 OAuth、session、logs 和 runtime state 放在 Docker named volumes，不寫入專案目錄。
 - 同一時間只允許一個名為 `opencode-dev-yuta` 的 container。
 
@@ -69,7 +71,13 @@ IMAGE_TAG=""
 OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta:<opencode-version>
 ```
 
-`docker-compose.yml` 只讀這個 `OPENCODE_DEV_IMAGE`，不在啟動時重新猜測 image。
+`docker-compose.yml` 只讀這個 `OPENCODE_DEV_IMAGE`，不在啟動時重新猜測 base image。`build-image.sh` 與 `install-image.sh` 也會更新穩定 alias：
+
+```text
+localhost/opencode-dev-yuta:base
+```
+
+user/project profile 的 Dockerfile 可以固定 `FROM localhost/opencode-dev-yuta:base`，不用在 OpenCode image 版號更新後修改 `FROM`。
 
 `.profile` 會記錄 init 實際寫入的 shell profile 路徑，讓 `opencode-dev --uninstall` 可以移除同一個 profile block，不需要使用者記得當初寫到哪個檔案。
 
@@ -203,6 +211,78 @@ opencode-dev ../other-project
 
 使用者要切換專案時，不需要修改設定；只要在 host 上切換目錄或指定不同 path，再重新執行 `opencode-dev`。
 
+第一次在某個專案執行時，launcher 會確保存在：
+
+```text
+<project>/.opencode-dev-yuta/
+```
+
+## Profile 模型
+
+profile 是一個 Dockerfile 檔案，檔名固定為：
+
+```text
+Dockerfile.<profile>
+```
+
+user profile 放在：
+
+```text
+~/.opencode-dev-yuta/Dockerfile.<profile>
+```
+
+project profile 放在：
+
+```text
+<project>/.opencode-dev-yuta/Dockerfile.<profile>
+```
+
+選擇中的 profile 記錄在：
+
+```text
+<project>/.opencode-dev-yuta/config.env
+```
+
+如果目前專案路徑就是使用者的 home directory，選擇會記錄在：
+
+```text
+~/.opencode-dev-yuta/config.env
+```
+
+如果目前專案路徑就是使用者的 home directory，`~/.opencode-dev-yuta` 只會被視為 user profile 目錄，不會再被重複當成 project profile。
+
+`opencode-dev profile status` 會列出目前 project 的 selected profile、config 路徑，以及可用的 user 與 project profile。profile 顯示名稱使用 `username/Dockerfile.<profile>` 與 `projectname/Dockerfile.<profile>`，例如：
+
+```text
+user profiles:
+  frank/Dockerfile.default
+
+project profiles:
+  service-api/Dockerfile.python
+```
+
+預設 profile 是 `default`。launcher 會在 `~/.opencode-dev-yuta/Dockerfile.default` 不存在時自動建立一個最小 Dockerfile：
+
+```dockerfile
+FROM localhost/opencode-dev-yuta:base
+
+USER opencode
+```
+
+`default` profile 啟動時會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。指定 profile 並開啟 OpenCode：
+
+```bash
+opencode-dev profile set python
+```
+
+切回預設 profile：
+
+```bash
+opencode-dev profile set default
+```
+
+launcher 會先找 project profile，再找 user profile。若 project 與 user 有同名 profile，project profile 優先，並在第一次遇到該覆蓋關係時提示。若 profile Dockerfile 或 selected profile 發生變化，launcher 會在啟動 OpenCode 前提示原因並自動準備對應的 profile image。若非 `default` profile 偵測到 base image 已更新，launcher 會詢問使用者是否現在重建；使用者也可以略過重建，先沿用既有 profile image。
+
 ## 進階說明
 
 預設 help 只顯示日常操作：
@@ -226,6 +306,11 @@ opencode-dev --admin-help
 ```text
 opencode-dev 啟動
   -> 解析目前目錄或使用者指定 path
+  -> 確保 <project>/.opencode-dev-yuta/ 與 user default profile 存在
+  -> 讀取 .opencode-dev-yuta/config.env 決定 selected profile
+  -> 如果 selected profile 是 default，直接使用 localhost/opencode-dev-yuta:base
+  -> 如果不是 default，找到 Dockerfile.<profile>，project profile 優先於同名 user profile
+  -> 若非 default profile image 不存在或已過期，自動 build 或詢問
   -> OPENCODE_DEV_WORKSPACE=/resolved/host/path docker compose run --rm ...
   -> docker-compose.yml bind mount OPENCODE_DEV_WORKSPACE 到 /workspace
   -> 執行 opencode
@@ -241,7 +326,7 @@ volumes:
   - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
 ```
 
-`opencode-dev` script 只負責把使用者輸入的 path 解析成絕對路徑，然後在執行 Compose 時設定 `OPENCODE_DEV_WORKSPACE`。container image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
+`opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE` 與 `OPENCODE_DEV_WORKSPACE`。base image 由 `compose.env` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
 
 image 啟動時會先進入 entrypoint。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 在大多數情境下都能直接讀寫。
 
@@ -293,11 +378,13 @@ docker volume rm opencode-home-yuta opencode-state-yuta
 目前定型設計不使用 `.env`。原因是日常使用者不需要修改 container 拓樸：
 
 ```text
-image name       固定在 compose.env
+base image       固定在 compose.env
 image tag        build/install/update 後寫入 compose.env 與 image.profile
+base alias       build/install/update 後指向 localhost/opencode-dev-yuta:base
 container name   固定為 opencode-dev-yuta
 state volumes    固定為 opencode-home-yuta / opencode-state-yuta
 project mount    由 opencode-dev 的 path 參數或 pwd 決定
+profile files    由 ~/.opencode-dev-yuta 與 <project>/.opencode-dev-yuta 提供
 ```
 
 若需要調整 image、volume、Compose 或 OpenCode config，由維護者直接修改 repo 內的腳本或 Compose 設定即可。一般使用者只需要先安裝 image tar，之後執行：
@@ -315,9 +402,10 @@ opencode-dev /path/to/project
 
 ## 與 Compose 的關係
 
-`.devcontainer/docker-compose.yml` 是日常 `opencode-dev` 的主要 container 設定來源。`opencode-dev` 不直接用 `docker run` 啟動 container；它讀取 `.devcontainer/compose.env` 作為固定 image 來源，並只把目前專案路徑透過環境變數傳給 Compose：
+`.devcontainer/docker-compose.yml` 是日常 `opencode-dev` 的主要 container 設定來源。`opencode-dev` 不直接用 `docker run` 啟動 container；它讀取 `.devcontainer/compose.env` 作為固定 base image 來源，必要時先 build profile image，並把實際要執行的 image 與目前專案路徑透過環境變數傳給 Compose：
 
 ```bash
+OPENCODE_DEV_IMAGE=localhost/opencode-dev-yuta-env:<profile-tag> \
 OPENCODE_DEV_WORKSPACE=/path/to/project \
 docker compose --env-file .devcontainer/compose.env -f .devcontainer/docker-compose.yml run --rm --name opencode-dev-yuta opencode opencode
 ```

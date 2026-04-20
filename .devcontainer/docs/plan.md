@@ -19,7 +19,17 @@
 - 需要先載入公司的 CA
 - 需要先處理常見套件的 ssl 應對策略(curl, pip, apt, npm), 還有可能會出現 block 的問題.
 - 需要考慮在公司電腦編譯時如何塞入 CA
-- 需要一個 script 幫忙編譯 image, 打上 tag, 並打包成 tar, 版號要和 opencode 相同
-- dockerfile 可能需要拆分步驟, 因為公司網路很容易斷線...
-- 需要改用 docker-compose.yml 管理 contaienr 啟動時的參數.
+
+
+- TODO base image 需要加入 cmake.
+
+- 在 /home/<user> 資料夾使用 `opencode-dev` 也要正確的識別 .opencode-dev-yuta 是個 user 級別的設定
+- 需要提供一個 create 與 copy 的指令
+    - 提供一個 template
+    - 可以指定 profile  copy 到 project 或者 user?
+- 需要提供一些範例讓 AI 可以協助使用者建立客製化的 Dockerfile
+    - dockerfile 可能需要拆分步驟, 因為公司網路很容易斷線...
+- 需要預設一些 user profile
+    - python
+    - npm
 

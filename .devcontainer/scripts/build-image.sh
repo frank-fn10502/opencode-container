@@ -102,7 +102,9 @@ if [[ -z "${version}" ]]; then
 fi
 
 image_name="${IMAGE_REPOSITORY}:${version}"
+base_alias="${IMAGE_REPOSITORY}:base"
 docker tag "${temp_tag}" "${image_name}"
+docker tag "${image_name}" "${base_alias}"
 
 mkdir -p "${PROJECT_ROOT}/.docker_imgs"
 tar_path="${PROJECT_ROOT}/.docker_imgs/opencode-dev-yuta-${version}.tar"
@@ -119,6 +121,7 @@ docker save --output "${tar_path}" "${image_name}"
 docker image rm "${temp_tag}" >/dev/null 2>&1 || true
 
 printf 'Built image: %s\n' "${image_name}"
+printf 'Updated base alias: %s\n' "${base_alias}"
 printf 'Wrote image profile: %s\n' "${IMAGE_PROFILE}"
 printf 'Wrote compose env: %s\n' "${COMPOSE_ENV}"
 printf 'Wrote tar: %s\n' "${tar_path}"

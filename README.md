@@ -42,6 +42,14 @@ tar 只能放在 `.docker_imgs/` 這一層，不支援其他位置。
 opencode-dev
 ```
 
+第一次在某個資料夾執行時，`opencode-dev` 會建立：
+
+```text
+.opencode-dev-yuta/
+```
+
+這個資料夾用來放該專案自己的 profile，例如 `Dockerfile.python`。
+
 指定專案資料夾：
 
 ```bash
@@ -52,6 +60,53 @@ opencode-dev ../other-project
 如果指定的資料夾不存在，script 會建立它。每次啟動只會把該資料夾掛到 container 的 `/workspace`。
 
 容器預設使用 `opencode` 使用者。啟動時會自動檢查 `/workspace` 的擁有者 UID/GID；若與 `opencode` 不一致，entrypoint 會在容器內動態調整 `opencode` 的 UID/GID 後再執行主程式，降低 host bind mount 的權限衝突。
+
+## Profile
+
+`opencode-dev` 支援 user 與 project 兩層 profile：
+
+```text
+~/.opencode-dev-yuta/Dockerfile.<profile>
+<project>/.opencode-dev-yuta/Dockerfile.<profile>
+<project>/.opencode-dev-yuta/config.env
+```
+
+user profile 在所有專案都能使用；project profile 只在該專案資料夾下使用。查看目前設定與可用 profile：
+
+```bash
+opencode-dev profile status
+```
+
+預設 profile 名稱是 `default`，它會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。設定 profile 並開啟 OpenCode：
+
+```bash
+opencode-dev profile set python
+```
+
+切回預設 profile：
+
+```bash
+opencode-dev profile set default
+```
+
+選擇會寫入目前專案的 `.opencode-dev-yuta/config.env`，下次直接執行 `opencode-dev` 會沿用。若目前路徑是使用者 home，選擇會寫入 `~/.opencode-dev-yuta/config.env`。
+
+如果 user 與 project 同時存在同名 profile，`opencode-dev` 會優先採用 project profile，並在第一次遇到時提示。
+
+如果 base image 更新，下一次執行非 `default` profile 時會詢問是否現在重建對應的 profile image；如果任務緊急，可以先略過重建並沿用既有 profile image。
+
+profile Dockerfile 可以固定使用穩定 base alias：
+
+```dockerfile
+FROM localhost/opencode-dev-yuta:base
+
+USER root
+# RUN apt-get update && apt-get install -y --no-install-recommends graphviz
+
+USER opencode
+```
+
+更新 image 後，`localhost/opencode-dev-yuta:base` 會指向新版 base；下次啟動需要重建的 profile 時，工具會依情況提示並準備新的 profile image。
 
 ## 常用指令
 
@@ -97,6 +152,7 @@ opencode-dev --uninstall
 
 - 檢查本機是否已有 `.devcontainer/image.profile` 指定的 exact image。
 - 如果沒有，從 `.docker_imgs/opencode-dev-yuta-${IMAGE_TAG}.tar` 載入。
+- 更新 `localhost/opencode-dev-yuta:base` alias，讓 profile Dockerfile 不需要跟著版本修改 `FROM`。
 - 重新部署 `~/.local/bin/opencode-dev-yuta/` 裡的 runtime scripts。
 - 保留使用者既有的 Docker volumes 與登入狀態。
 

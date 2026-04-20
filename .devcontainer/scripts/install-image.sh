@@ -182,12 +182,16 @@ tar_contains_expected_image() {
 update_install_metadata() {
   local image_name="$1"
   local image_tag
-
-  if [[ ! -f "${INSTALL_MARKER}" ]]; then
-    return
-  fi
+  local base_alias
 
   image_tag="${image_name##*:}"
+  base_alias="${IMAGE_REPOSITORY}:base"
+  docker tag "${image_name}" "${base_alias}"
+
+  if [[ ! -f "${INSTALL_MARKER}" ]]; then
+    printf 'Updated base alias: %s\n' "${base_alias}"
+    return
+  fi
 
   cat > "${INSTALL_IMAGE_PROFILE}" <<EOF
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
@@ -196,6 +200,7 @@ EOF
   cat > "${INSTALL_COMPOSE_ENV}" <<EOF
 OPENCODE_DEV_IMAGE=${image_name}
 EOF
+  printf 'Updated base alias: %s\n' "${base_alias}"
 }
 
 if [[ $# -gt 1 ]]; then
