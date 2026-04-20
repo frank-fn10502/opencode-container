@@ -24,7 +24,7 @@ init script 使用使用者權限安裝，不需要 sudo。預設執行：
 ./init.sh
 ```
 
-`init.sh` 是根目錄的使用者入口，內部會呼叫 `.devcontainer/scripts/init-opencode-dev.sh`。
+`init.sh` 是根目錄的使用者入口，內部會呼叫 `.devcontainer/scripts/init/init-opencode-dev.sh`。
 
 init 的第一步會先確認 Docker image 是否已安裝。它會讀取 `.devcontainer/image.profile` 的 `IMAGE_REPOSITORY` 與 `IMAGE_TAG`；如果 `IMAGE_TAG` 已設定，必須本機 Docker 已存在 exact `IMAGE_REPOSITORY:IMAGE_TAG` 才會跳過載入。若 image 不存在，init 會要求先載入對應 image tar，成功後才繼續安裝或更新 `opencode-dev` launcher。
 
@@ -50,11 +50,37 @@ opencode-dev
 ~/.local/bin/opencode-dev-yuta/compose.env
 ~/.local/bin/opencode-dev-yuta/docker-compose.yml
 ~/.local/bin/opencode-dev-yuta/image.profile
-~/.local/bin/opencode-dev-yuta/scripts/init-opencode-dev.sh
-~/.local/bin/opencode-dev-yuta/scripts/install-image.sh
-~/.local/bin/opencode-dev-yuta/scripts/opencode-dev.sh
+~/.local/bin/opencode-dev-yuta/init/init-opencode-dev.sh
+~/.local/bin/opencode-dev-yuta/init/install-image.sh
+~/.local/bin/opencode-dev-yuta/runtime/opencode-dev.sh
+~/.local/bin/opencode-dev-yuta/runtime/common.sh
+~/.local/bin/opencode-dev-yuta/runtime/profiles.sh
+~/.local/bin/opencode-dev-yuta/runtime/container.sh
 ~/.local/bin/opencode-dev-yuta/config/opencode.json
 ```
+
+repo 內的 script 依用途分成三類：
+
+```text
+.devcontainer/scripts/init/
+  init-opencode-dev.sh  初次安裝、更新 launcher、解除安裝
+  install-image.sh      init 時確認或載入 base image
+
+.devcontainer/scripts/runtime/
+  opencode-dev-dispatcher.sh  shell function 呼叫的固定入口
+  opencode-dev.sh             日常 opencode-dev 指令解析
+  common.sh                   repo/install 路徑、base image、project path 共用邏輯
+  profiles.sh                 profile 設定、Dockerfile 查找、profile image build
+  container.sh                container lifecycle 與 compose run
+  entrypoint-opencode.sh      image 內的 container entrypoint
+
+.devcontainer/scripts/release/
+  build-image.sh              維護者 build base image 與輸出 tar
+  push-dockerhub.sh           維護者推送 image
+  pull-and-pack-image.sh      維護者下載 image 並重新打包 tar
+```
+
+安裝後只會複製 `init/` 與 `runtime/` 需要的內容到 `~/.local/bin/opencode-dev-yuta/`；`release/` 工具留在 repo 中給維護者使用。
 
 `image.profile` 是 image 設定來源，保存 image repository 與 tag：
 
@@ -81,7 +107,7 @@ user/project profile 的 Dockerfile 可以固定 `FROM localhost/opencode-dev-yu
 
 `.profile` 會記錄 init 實際寫入的 shell profile 路徑，讓 `opencode-dev --uninstall` 可以移除同一個 profile block，不需要使用者記得當初寫到哪個檔案。
 
-`bin/opencode-dev` 是 dispatcher，負責檢查安裝目錄，然後把所有參數原樣轉給 `scripts/opencode-dev.sh`。`opencode-dev --uninstall` 是 `scripts/opencode-dev.sh` 的正式命令，因此也會出現在 `opencode-dev --help`。
+`bin/opencode-dev` 是 dispatcher，負責檢查安裝目錄，然後把所有參數原樣轉給 `runtime/opencode-dev.sh`。`opencode-dev --uninstall` 是 `runtime/opencode-dev.sh` 的正式命令，因此也會出現在 `opencode-dev --help`。
 
 shell profile 只會被加入以下完整區塊。這個 block 不寫檔、不重建檔案、不改 PATH；它只把 `opencode-dev` 轉交給固定安裝位置的 dispatcher：
 
@@ -117,14 +143,14 @@ opencode-dev --uninstall
 repo 內的 init script 也保留 `--uninstall`，主要給測試或尚未 source profile 的情境使用：
 
 ```bash
-bash .devcontainer/scripts/init-opencode-dev.sh --uninstall
+bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 ```
 
 `--profile` 只用來指定要修改哪個 shell profile。一般使用者不需要指定；測試或特殊 shell 設定才需要：
 
 ```bash
-bash .devcontainer/scripts/init-opencode-dev.sh --profile ~/.zshrc
-bash .devcontainer/scripts/init-opencode-dev.sh --uninstall --profile ~/.zshrc
+bash .devcontainer/scripts/init/init-opencode-dev.sh --profile ~/.zshrc
+bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall --profile ~/.zshrc
 ```
 
 自動偵測規則是：
@@ -147,7 +173,7 @@ localhost/opencode-dev-yuta:<opencode-version>
 建立並打包 tar：
 
 ```bash
-bash .devcontainer/scripts/build-image.sh
+bash .devcontainer/scripts/release/build-image.sh
 ```
 
 `build-image.sh` 除了輸出 tar，也會自動更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`。這些檔案應一併 commit 到 repo，讓使用者拉取新版後可以直接執行 `./init.sh` 安裝。
@@ -161,7 +187,7 @@ bash .devcontainer/scripts/build-image.sh
 使用者拿到 tar 後，在自己的電腦載入 image：
 
 ```bash
-bash .devcontainer/scripts/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
 ```
 
 `install-image.sh` 只接受直接放在 `.docker_imgs/` 下、檔名符合 `opencode-dev-yuta-*.tar` 的 tar。它不接受 URL、不接受其他資料夾，也不遞迴搜尋子資料夾。tar 內必須含有 `localhost/opencode-dev-yuta:<opencode-version>` 的 image。載入成功後，如果 host launcher 已經安裝，它會同步更新 `~/.local/bin/opencode-dev-yuta/image.profile` 與 `~/.local/bin/opencode-dev-yuta/compose.env`。`install-image.sh` 不會修改 repo 內的 `.devcontainer/image.profile` 或 `.devcontainer/compose.env`，這些檔案由 `build-image.sh` 維護並 commit 到 repo。
@@ -181,7 +207,7 @@ IMAGE_REPOSITORY:IMAGE_TAG
 不帶參數執行時，`install-image.sh` 會先檢查本機 Docker 是否已有 `image.profile` 指定的 repository：
 
 ```bash
-bash .devcontainer/scripts/install-image.sh
+bash .devcontainer/scripts/init/install-image.sh
 ```
 
 檢查順序是：
@@ -428,25 +454,25 @@ docker compose --env-file .devcontainer/compose.env -f .devcontainer/docker-comp
 先確認本機 Docker 已有 `image.profile` 指定的 image；如果沒有，從 `.docker_imgs/` 的本機 tar 載入。image ready 後，安裝 `opencode-dev` runtime 到 `~/.local/bin/opencode-dev-yuta/`，並把 `opencode-dev` function 註冊到 shell profile。
 
 ```bash
-bash .devcontainer/scripts/init-opencode-dev.sh --uninstall
+bash .devcontainer/scripts/init/init-opencode-dev.sh --uninstall
 ```
 
 從 shell profile 移除 `opencode-dev` function 區塊，並刪除本工具管理的 install 目錄。
 
 ```bash
-bash .devcontainer/scripts/build-image.sh
+bash .devcontainer/scripts/release/build-image.sh
 ```
 
 從 `.devcontainer/Dockerfile`（CA 模式）build image，依 OpenCode 版號 tag 成 `localhost/opencode-dev-yuta:<opencode-version>`，更新 `.devcontainer/image.profile` 與 `.devcontainer/compose.env`，並輸出 Docker image tar。
 
 ```bash
-bash .devcontainer/scripts/build-image.sh --dockerfile Dockerfile.insecure
+bash .devcontainer/scripts/release/build-image.sh --dockerfile Dockerfile.insecure
 ```
 
 使用 `.devcontainer/Dockerfile.insecure` build image，預設放寬 apt/npm/pip/curl/wget 的 SSL 驗證設定。
 
 ```bash
-bash .devcontainer/scripts/build-image.sh \
+bash .devcontainer/scripts/release/build-image.sh \
   --dockerfile Dockerfile \
   --build-arg COMPANY_CA_CERT_B64="$(base64 < company-ca.crt | tr -d '\n')"
 ```
@@ -454,13 +480,13 @@ bash .devcontainer/scripts/build-image.sh \
 在 CA 模式下傳入公司 CA（base64）並更新系統 trust store。
 
 ```bash
-bash .devcontainer/scripts/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
+bash .devcontainer/scripts/init/install-image.sh .docker_imgs/opencode-dev-yuta-<opencode-version>.tar
 ```
 
 把 image tar 載入本機 Docker。不會修改 repo 內的 `image.profile` 或 `compose.env`。
 
 ```bash
-bash .devcontainer/scripts/install-image.sh
+bash .devcontainer/scripts/init/install-image.sh
 ```
 
 先檢查本機是否已有 `image.profile` 指定的 image；如果 `IMAGE_TAG` 已設定，必須是 exact `IMAGE_REPOSITORY:IMAGE_TAG`。沒有時才從 `.docker_imgs/` 載入對應 tar。

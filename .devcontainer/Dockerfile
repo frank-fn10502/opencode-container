@@ -21,6 +21,7 @@ RUN apt-get update \
         less \
         ripgrep \
         build-essential \
+        cmake \
         git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -72,7 +73,7 @@ RUN mkdir -p \
         /home/opencode/.config/opencode \
         /home/opencode/.local
 
-COPY scripts/entrypoint-opencode.sh /usr/local/bin/entrypoint-opencode.sh
+COPY scripts/runtime/entrypoint-opencode.sh /usr/local/bin/entrypoint-opencode.sh
 
 RUN chmod 755 /usr/local/bin/entrypoint-opencode.sh
 

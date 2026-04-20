@@ -3,7 +3,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+INSTALL_OR_SCRIPTS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [[ -f "${INSTALL_OR_SCRIPTS_DIR}/image.profile" ]]; then
+  DEVCONTAINER_DIR="${INSTALL_OR_SCRIPTS_DIR}"
+else
+  DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+fi
 PROJECT_ROOT="$(cd "${DEVCONTAINER_DIR}/.." && pwd)"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"

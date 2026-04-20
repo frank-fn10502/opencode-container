@@ -3,7 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+INSTALL_OR_SCRIPTS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [[ -f "${INSTALL_OR_SCRIPTS_DIR}/docker-compose.yml" ]]; then
+  DEVCONTAINER_DIR="${INSTALL_OR_SCRIPTS_DIR}"
+  RUNTIME_SCRIPT_DIR="${DEVCONTAINER_DIR}/runtime"
+else
+  DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+  RUNTIME_SCRIPT_DIR="${DEVCONTAINER_DIR}/scripts/runtime"
+fi
 INSTALL_DIR="${HOME}/.local/bin/opencode-dev-yuta"
 INSTALL_MARKER="${INSTALL_DIR}/.opencode-dev-managed"
 INSTALL_PROFILE="${INSTALL_DIR}/.profile"
@@ -93,19 +100,25 @@ install_runtime() {
     rm -rf "${INSTALL_DIR}"
   fi
 
-  mkdir -p "${INSTALL_DIR}/bin" "${INSTALL_DIR}/scripts" "${INSTALL_DIR}/config"
-  cp "${SCRIPT_DIR}/opencode-dev-dispatcher.sh" "${INSTALL_DIR}/bin/opencode-dev"
-  cp "${SCRIPT_DIR}/opencode-dev.sh" "${INSTALL_DIR}/scripts/opencode-dev.sh"
-  cp "${SCRIPT_DIR}/init-opencode-dev.sh" "${INSTALL_DIR}/scripts/init-opencode-dev.sh"
-  cp "${SCRIPT_DIR}/install-image.sh" "${INSTALL_DIR}/scripts/install-image.sh"
+  mkdir -p "${INSTALL_DIR}/bin" "${INSTALL_DIR}/runtime" "${INSTALL_DIR}/init" "${INSTALL_DIR}/config"
+  cp "${RUNTIME_SCRIPT_DIR}/opencode-dev-dispatcher.sh" "${INSTALL_DIR}/bin/opencode-dev"
+  cp "${RUNTIME_SCRIPT_DIR}/opencode-dev.sh" "${INSTALL_DIR}/runtime/opencode-dev.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/common.sh" "${INSTALL_DIR}/runtime/common.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/profiles.sh" "${INSTALL_DIR}/runtime/profiles.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/container.sh" "${INSTALL_DIR}/runtime/container.sh"
+  cp "${SCRIPT_DIR}/init-opencode-dev.sh" "${INSTALL_DIR}/init/init-opencode-dev.sh"
+  cp "${SCRIPT_DIR}/install-image.sh" "${INSTALL_DIR}/init/install-image.sh"
   cp "${DEVCONTAINER_DIR}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
   cp "${DEVCONTAINER_DIR}/compose.env" "${INSTALL_DIR}/compose.env"
   cp "${DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
   cp "${IMAGE_PROFILE}" "${INSTALL_DIR}/image.profile"
   chmod 755 "${INSTALL_DIR}/bin/opencode-dev"
-  chmod 755 "${INSTALL_DIR}/scripts/opencode-dev.sh"
-  chmod 755 "${INSTALL_DIR}/scripts/init-opencode-dev.sh"
-  chmod 755 "${INSTALL_DIR}/scripts/install-image.sh"
+  chmod 755 "${INSTALL_DIR}/runtime/opencode-dev.sh"
+  chmod 644 "${INSTALL_DIR}/runtime/common.sh"
+  chmod 644 "${INSTALL_DIR}/runtime/profiles.sh"
+  chmod 644 "${INSTALL_DIR}/runtime/container.sh"
+  chmod 755 "${INSTALL_DIR}/init/init-opencode-dev.sh"
+  chmod 755 "${INSTALL_DIR}/init/install-image.sh"
   printf '%s\n' "${profile}" > "${INSTALL_PROFILE}"
   printf 'managed by init-opencode-dev.sh\n' > "${INSTALL_MARKER}"
 }

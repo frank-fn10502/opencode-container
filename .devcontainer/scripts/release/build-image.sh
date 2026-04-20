@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PROJECT_ROOT="$(cd "${DEVCONTAINER_DIR}/.." && pwd)"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"

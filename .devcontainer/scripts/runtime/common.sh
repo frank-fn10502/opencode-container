@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+
+INSTALL_OR_SCRIPTS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [[ -f "${INSTALL_OR_SCRIPTS_DIR}/docker-compose.yml" ]]; then
+  DEVCONTAINER_DIR="${INSTALL_OR_SCRIPTS_DIR}"
+else
+  DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+fi
+
+COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
+COMPOSE_ENV="${DEVCONTAINER_DIR}/compose.env"
+IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
+
+if [[ -f "${DEVCONTAINER_DIR}/init/init-opencode-dev.sh" ]]; then
+  INIT_SCRIPT="${DEVCONTAINER_DIR}/init/init-opencode-dev.sh"
+else
+  INIT_SCRIPT="${DEVCONTAINER_DIR}/scripts/init/init-opencode-dev.sh"
+fi
+
+CONTAINER_NAME="opencode-dev-yuta"
+USER_CONFIG_DIR="${HOME}/.opencode-dev-yuta"
+PROJECT_CONFIG_DIR_NAME=".opencode-dev-yuta"
+PROFILE_CONFIG_FILE="config.env"
+DEFAULT_PROFILE="default"
+PROJECT_IMAGE_REPOSITORY="localhost/opencode-dev-yuta-env"
+
+IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
+IMAGE_TAG=""
+
+if [[ -f "${IMAGE_PROFILE}" ]]; then
+  # shellcheck source=/dev/null
+  source "${IMAGE_PROFILE}"
+fi
+
+ensure_compose_env() {
+  if [[ ! -f "${COMPOSE_ENV}" ]]; then
+    printf 'Cannot find compose env: %s\n' "${COMPOSE_ENV}" >&2
+    printf 'Run ./init.sh to install opencode-dev with a fixed image setting.\n' >&2
+    exit 1
+  fi
+
+  if ! grep -Eq '^OPENCODE_DEV_IMAGE=.+:.+' "${COMPOSE_ENV}"; then
+    printf 'compose.env does not contain a fixed OPENCODE_DEV_IMAGE value: %s\n' "${COMPOSE_ENV}" >&2
+    printf 'Run ./init.sh after placing the image tar under .docker_imgs/.\n' >&2
+    exit 1
+  fi
+}
+
+base_image_ref() {
+  local image
+
+  image="$(sed -n 's/^OPENCODE_DEV_IMAGE=//p' "${COMPOSE_ENV}" | head -n 1)"
+  if [[ -z "${image}" ]]; then
+    printf 'compose.env does not contain OPENCODE_DEV_IMAGE: %s\n' "${COMPOSE_ENV}" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${image}"
+}
+
+base_alias_ref() {
+  printf '%s:base\n' "${IMAGE_REPOSITORY}"
+}
+
+ensure_base_alias() {
+  local base_image base_alias
+
+  base_image="$(base_image_ref)"
+  base_alias="$(base_alias_ref)"
+
+  if docker image inspect "${base_image}" >/dev/null 2>&1; then
+    docker tag "${base_image}" "${base_alias}" >/dev/null
+    return
+  fi
+
+  printf 'Docker image not found: %s\n' "${base_image}" >&2
+  printf 'Run ./init.sh after placing the image tar under .docker_imgs/.\n' >&2
+  exit 1
+}
+
+is_home_project() {
+  local project_dir="$1"
+  local home_dir
+
+  home_dir="$(cd "${HOME}" && pwd -P)"
+  [[ "${project_dir}" == "${home_dir}" ]]
+}
+
+project_config_dir() {
+  local project_dir="$1"
+
+  printf '%s/%s\n' "${project_dir}" "${PROJECT_CONFIG_DIR_NAME}"
+}
+
+profile_config_file() {
+  local project_dir="$1"
+
+  if is_home_project "${project_dir}"; then
+    printf '%s/%s\n' "${USER_CONFIG_DIR}" "${PROFILE_CONFIG_FILE}"
+  else
+    printf '%s/%s\n' "$(project_config_dir "${project_dir}")" "${PROFILE_CONFIG_FILE}"
+  fi
+}
+
+profile_warning_marker() {
+  local project_dir="$1"
+  local profile="$2"
+
+  printf '%s/.warned-project-overrides.%s\n' "$(project_config_dir "${project_dir}")" "${profile}"
+}
+
+ensure_project_config() {
+  local project_dir="$1"
+
+  if is_home_project "${project_dir}"; then
+    return
+  fi
+
+  mkdir -p "$(project_config_dir "${project_dir}")"
+}
+
+resolve_project_dir() {
+  local requested="$1"
+  local target
+
+  if [[ -z "${requested}" ]]; then
+    target="${PWD}"
+  else
+    case "${requested}" in
+      \~)
+        target="${HOME}"
+        ;;
+      \~/*)
+        target="${HOME}/${requested#"~/"}"
+        ;;
+      /*)
+        target="${requested}"
+        ;;
+      *)
+        target="${PWD}/${requested}"
+        ;;
+    esac
+  fi
+
+  mkdir -p "${target}"
+  if [[ ! -d "${target}" ]]; then
+    printf 'Path is not a directory: %s\n' "${target}" >&2
+    exit 1
+  fi
+
+  (cd "${target}" && pwd -P)
+}
+
+file_sha256() {
+  local file="$1"
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${file}" | awk '{ print $1 }'
+  else
+    sha256sum "${file}" | awk '{ print $1 }'
+  fi
+}
