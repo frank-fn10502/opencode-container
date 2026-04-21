@@ -12,18 +12,43 @@ container_running() {
 
 confirm_close_existing() {
   printf '%s\n' "A container named ${CONTAINER_NAME} already exists."
-  printf '%s' "Close it before starting a new ${CONTAINER_NAME}? [y/N] "
+  printf '%s' "Close it before starting a new ${CONTAINER_NAME}? [Yes/No] "
   read -r answer
 
   case "${answer}" in
-    y|Y|yes|YES)
+    Yes)
       return 0
       ;;
+    No|"")
+      printf '%s\n' "Aborted. The existing ${CONTAINER_NAME} container was left untouched."
+      return 1
+      ;;
     *)
+      printf '%s\n' "Please type Yes or No."
       printf '%s\n' "Aborted. The existing ${CONTAINER_NAME} container was left untouched."
       return 1
       ;;
   esac
+}
+
+remove_container() {
+  local id="$1"
+
+  if container_running "${id}"; then
+    if ! docker stop --time 5 "${id}" >/dev/null; then
+      printf 'Container did not stop cleanly; forcing removal: %s\n' "${CONTAINER_NAME}" >&2
+      docker rm --force "${id}" >/dev/null
+      return
+    fi
+  fi
+
+  if container_running "${id}"; then
+    printf 'Container is still running after stop; forcing removal: %s\n' "${CONTAINER_NAME}" >&2
+    docker rm --force "${id}" >/dev/null
+    return
+  fi
+
+  docker rm "${id}" >/dev/null
 }
 
 remove_existing_container_if_allowed() {
@@ -35,10 +60,7 @@ remove_existing_container_if_allowed() {
   fi
 
   confirm_close_existing || exit 1
-  if container_running "${id}"; then
-    docker stop "${id}" >/dev/null
-  fi
-  docker rm "${id}" >/dev/null
+  remove_container "${id}"
 }
 
 compose_run_base() {
@@ -99,10 +121,7 @@ stop_existing() {
     return
   fi
 
-  if container_running "${id}"; then
-    docker stop "${id}" >/dev/null
-  fi
-  docker rm "${id}" >/dev/null
+  remove_container "${id}"
   printf 'Removed opencode-dev-yuta container.\n'
 }
 

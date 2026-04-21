@@ -28,7 +28,5 @@
     - 這樣 copilot 或許可以撰寫 script 呼叫 opencode? 或許可以因此實作出初階的 agent flow?
 - TODO 要研究是否需要安裝 agent browser?
 - TODO 還沒有正式的測試新版的 base image 是否真的可以觸發 custom profile 的 Yes/No.
-
-- TODO 如何正確且安全的移除多餘的 container? 
 - TODO opencode 似乎可以外掛 MCP 與 tools.
     - 可以建立一個搜索內部文件庫的 tools
