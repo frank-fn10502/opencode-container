@@ -60,6 +60,8 @@ opencode-dev ../other-project
 
 如果指定的資料夾不存在，script 會建立它。每次啟動只會把該資料夾掛到 container 的 `/workspace`。
 
+opencode-dev 會提供一份 OpenCode global `AGENTS.md`，讓模型預設使用繁體中文回答並保留英文專有名詞。專案自己的 `AGENTS.md` 仍可放在專案根目錄，作為 project rules。
+
 profile Dockerfile 是 build-time 環境配方，一般 profile 不需要、也不應設定 `USER`。實際啟動 container 時，opencode-dev 會先用 root 執行 entrypoint，檢查 `/workspace` 的擁有者 UID/GID，整理 `/home/opencode` 權限，然後再切回 `opencode` 執行 OpenCode。
 
 ## Profile

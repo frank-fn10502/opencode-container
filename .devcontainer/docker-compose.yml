@@ -18,6 +18,7 @@ services:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
       - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - ./config/AGENTS.md:/home/opencode/.config/opencode/AGENTS.md:ro
       - ./config/command:/home/opencode/.config/opencode/command:ro
       - opencode-home-yuta:/home/opencode/.local/share/opencode
       - opencode-state-yuta:/home/opencode/.local/state
@@ -38,6 +39,7 @@ services:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
       - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - ./config/AGENTS.md:/home/opencode/.config/opencode/AGENTS.md:ro
       - ./config/command:/home/opencode/.config/opencode/command:ro
       - opencode-cpp-runner-home-yuta:/home/opencode/.local/share/opencode
       - opencode-cpp-runner-local-state-yuta:/home/opencode/.local/state

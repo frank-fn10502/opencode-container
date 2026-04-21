@@ -110,6 +110,7 @@ install_runtime() {
   cp "${SCRIPT_DIR}/install-image.sh" "${INSTALL_DIR}/init/install-image.sh"
   cp "${DEVCONTAINER_DIR}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
   cp "${DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
+  cp "${DEVCONTAINER_DIR}/config/AGENTS.md" "${INSTALL_DIR}/config/AGENTS.md"
   cp -R "${DEVCONTAINER_DIR}/config/command" "${INSTALL_DIR}/config/command"
   cp "${DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md" "${INSTALL_DIR}/config/profile-dockerfile-guide.md"
   cp "${DEVCONTAINER_DIR}/config/project-profile-readme.md" "${INSTALL_DIR}/config/project-profile-readme.md"
