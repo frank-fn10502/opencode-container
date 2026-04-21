@@ -60,7 +60,7 @@ opencode-dev ../other-project
 
 如果指定的資料夾不存在，script 會建立它。每次啟動只會把該資料夾掛到 container 的 `/workspace`。
 
-容器預設使用 `opencode` 使用者。啟動時會自動檢查 `/workspace` 的擁有者 UID/GID；若與 `opencode` 不一致，entrypoint 會在容器內動態調整 `opencode` 的 UID/GID 後再執行主程式，降低 host bind mount 的權限衝突。
+profile Dockerfile 是 build-time 環境配方，一般 profile 不需要、也不應設定 `USER`。實際啟動 container 時，opencode-dev 會先用 root 執行 entrypoint，檢查 `/workspace` 的擁有者 UID/GID，整理 `/home/opencode` 權限，然後再切回 `opencode` 執行 OpenCode。
 
 ## Profile
 
@@ -121,10 +121,9 @@ profile Dockerfile 可以固定使用穩定 base alias：
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-# RUN apt-get update && apt-get install -y --no-install-recommends graphviz
-
-USER opencode
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends graphviz \
+    && rm -rf /var/lib/apt/lists/*
 ```
 
 更新 image 後，`localhost/opencode-dev-yuta:base` 會指向新版 base；下次啟動需要重建的 profile 時，工具會依情況提示並準備新的 profile image。

@@ -1,7 +1,5 @@
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 # Install native libraries and small CLIs often needed by Node packages and frontend tooling.
 # python3/make/g++ are already common node-gyp needs; build-essential is in the base image, but these
 # explicit packages keep this profile self-documenting if the base image changes later.
@@ -33,5 +31,3 @@ RUN npm install -g \
         vite \
         yarn \
         nx
-
-USER opencode

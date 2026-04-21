@@ -1,9 +1,5 @@
 FROM localhost/opencode-dev-yuta:base
 
-ENV PATH="/home/opencode/.dotnet/tools:${PATH}"
-
-USER root
-
 # Add Microsoft's Debian 12 package feed because the base image does not include dotnet packages.
 # The base image is Debian bookworm, so use the Debian 12 feed.
 RUN wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb \
@@ -22,14 +18,12 @@ RUN apt-get update \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
-USER opencode
-
-# Install common .NET global tools into the opencode user's home.
+# Install common .NET global tools into a system tool path.
 # dotnet-ef is the standard EF Core migration/database CLI used by many web/API projects.
 # CSharpier provides opinionated C# formatting for teams that do not rely only on IDE formatting.
 # ReportGenerator turns coverage output into readable reports for local and CI debugging.
 # dotnet-outdated reports stale NuGet dependencies from the command line.
-RUN dotnet tool install --global dotnet-ef \
-    && dotnet tool install --global csharpier \
-    && dotnet tool install --global dotnet-reportgenerator-globaltool \
-    && dotnet tool install --global dotnet-outdated-tool
+RUN dotnet tool install --tool-path /usr/local/bin dotnet-ef \
+    && dotnet tool install --tool-path /usr/local/bin csharpier \
+    && dotnet tool install --tool-path /usr/local/bin dotnet-reportgenerator-globaltool \
+    && dotnet tool install --tool-path /usr/local/bin dotnet-outdated-tool

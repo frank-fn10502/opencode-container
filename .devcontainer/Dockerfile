@@ -101,7 +101,3 @@ COPY scripts/runtime/entrypoint-opencode.sh /usr/local/bin/entrypoint-opencode.s
 RUN chmod 755 /usr/local/bin/entrypoint-opencode.sh
 
 WORKDIR /workspace
-
-ENTRYPOINT ["/usr/local/bin/entrypoint-opencode.sh"]
-
-CMD ["opencode"]

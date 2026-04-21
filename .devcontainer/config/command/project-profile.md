@@ -60,9 +60,10 @@ Profile Dockerfile rules:
 - Do not copy files from outside `/workspace/.opencode-dev-yuta/`.
 - Do not store secrets, tokens, private keys, or credentials in the Dockerfile or
   copied files.
-- Use `USER root` for system package installation, then switch back to
-  `USER opencode`.
-- The final user should normally be `opencode`.
+- Do not set `USER` in normal project profiles. Profile Dockerfiles are build
+  recipes that run as root. opencode-dev owns the runtime user switch: its
+  entrypoint starts as root, syncs UID/GID and volume ownership, then runs
+  OpenCode as `opencode`.
 - For apt installs, use `--no-install-recommends` and clean package lists:
 
   ```dockerfile
@@ -72,9 +73,9 @@ Profile Dockerfile rules:
       && rm -rf /var/lib/apt/lists/*
   ```
 
-- For Python command-line tools, prefer `pipx install <tool>` under
-  `USER opencode` when possible. The base image provides a writable Python venv
-  at `/opt/opencode-python`.
+- For Python command-line tools, install reusable tools into the shared base
+  venv with `pip install <tool>`. The base image puts `/opt/opencode-python` at
+  the front of `PATH`.
 - For Node command-line tools, install stable global CLIs only. Do not run
   project-level `npm install` or equivalent in the image.
 
@@ -82,6 +83,7 @@ Before finishing, validate:
 
 - `/workspace/.opencode-dev-yuta/Dockerfile.<profile>` exists.
 - The Dockerfile starts from `localhost/opencode-dev-yuta:base`.
-- The Dockerfile ends with or returns to `USER opencode`.
+- The Dockerfile does not set `USER` unless the user explicitly asked for an
+  advanced custom image contract.
 - `/workspace/.opencode-dev-yuta/config.env` selects the same profile.
 - Your final answer names the profile and lists the files changed.

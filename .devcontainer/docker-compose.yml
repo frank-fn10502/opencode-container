@@ -3,6 +3,9 @@ services:
     image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
     container_name: opencode-dev-yuta
     pull_policy: never
+    user: root
+    entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
+    command: ["opencode"]
     working_dir: /workspace
     stdin_open: true
     tty: true
@@ -22,6 +25,8 @@ services:
   opencode-cpp-runner:
     image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
     pull_policy: never
+    user: root
+    entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
     working_dir: /workspace
     command: ["sleep", "infinity"]
     extra_hosts:

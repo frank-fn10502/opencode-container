@@ -28,15 +28,17 @@ Do not pin `localhost/opencode-dev-yuta:<version>` in profile Dockerfiles. The `
 
 ## User model
 
-The base image has an `opencode` user and uses `/workspace` at runtime.
+Profile Dockerfiles are build-time environment recipes. Keep normal profiles as
+root recipes and do not set `USER`.
 
-Use `USER root` only for system installation, then switch back to:
+The base image has an `opencode` user, but opencode-dev owns the runtime user
+switch. At container startup, the entrypoint runs as root, syncs the `opencode`
+UID/GID with `/workspace`, repairs `/home/opencode` ownership, and then runs
+OpenCode as `opencode`.
 
-```dockerfile
-USER opencode
-```
-
-The final instruction should normally be `USER opencode`.
+Install tools into system locations or shared locations already on `PATH`, such
+as `/usr/local/bin` or `/opt/opencode-python`. Do not add a `USER` directive in
+normal profiles; that makes the runtime contract ambiguous.
 
 ## Build context
 
@@ -92,14 +94,10 @@ Use noninteractive apt installs, keep package lists clean, and avoid unnecessary
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         <package-name> \
     && rm -rf /var/lib/apt/lists/*
-
-USER opencode
 ```
 
 ## npm pattern
@@ -109,14 +107,10 @@ For global npm tools:
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 RUN npm install -g <tool-name>
-
-USER opencode
 ```
 
-If the tool can be installed under the `opencode` user without root, prefer that.
+Install global Node tools into the image, not project dependencies.
 
 ## Python pattern
 
@@ -130,33 +124,26 @@ Normal commands such as `python`, `python3`, `pip`, and `pip3` use that virtual
 environment by default, so `pip install <package>` does not write into Debian's
 externally managed system Python.
 
-Prefer `pipx` for Python command-line tools:
+Prefer installing Python command-line tools into the shared base venv:
 
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER opencode
-
-RUN pipx install <tool-name>
+RUN pip install <tool-name>
 ```
 
 For Python packages that need native OS headers or clients, install only the OS
-dependencies with `apt`, then install the Python package with `pip`, `pipx`, or
-the project's own dependency manager:
+dependencies with `apt`, then install reusable Python tooling with `pip`:
 
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
-
-USER root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         <system-package> \
     && rm -rf /var/lib/apt/lists/*
 
-USER opencode
-
-RUN pip install <python-package>
+RUN pip install <python-tool-or-reusable-package>
 ```
 
 ## Copying files
@@ -177,7 +164,7 @@ COPY ./pip.conf /etc/pip.conf
 COPY ./certs/company-ca.crt /usr/local/share/ca-certificates/company-ca.crt
 ```
 
-Use `USER root` before copying into system locations.
+Copying into system locations is allowed because profile builds run as root.
 
 ## Good minimal examples
 
@@ -186,16 +173,12 @@ Python tools:
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-USER opencode
-
-RUN pipx install poetry
+RUN pip install poetry
 ```
 
 Node tools:
@@ -203,11 +186,7 @@ Node tools:
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 RUN npm install -g pnpm turbo
-
-USER opencode
 ```
 
 Mixed native build tools:
@@ -215,15 +194,11 @@ Mixed native build tools:
 ```dockerfile
 FROM localhost/opencode-dev-yuta:base
 
-USER root
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         pkg-config \
         libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-
-USER opencode
 ```
 
 ## Validation checklist
@@ -232,7 +207,7 @@ Before saving a Dockerfile, check:
 
 - The filename is `Dockerfile.<profile>`.
 - The first `FROM` is `localhost/opencode-dev-yuta:base`.
-- Any root operation is followed by `USER opencode`.
+- The Dockerfile does not set `USER` in normal profiles.
 - No secrets are embedded.
 - No build step depends on `/workspace` or files outside `.opencode-dev-yuta/`.
 - apt package lists are cleaned after installation.

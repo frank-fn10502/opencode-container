@@ -411,7 +411,7 @@ volumes:
 
 `opencode-dev` script 會把使用者輸入的 path 解析成絕對路徑，確保 project config 目錄存在，依 profile Dockerfile 準備 profile image，然後在執行 Compose 時設定 `OPENCODE_DEV_IMAGE`、`OPENCODE_DEV_WORKSPACE` 與 `OPENCODE_DEV_USER_CONFIG`。base image 由 `image.profile` 固定，environment、volumes、working directory 與 host mapping 都維護在 `docker-compose.yml`。
 
-image 啟動時會先進入 entrypoint。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 在大多數情境下都能直接讀寫。
+image 啟動時會先進入 entrypoint。Compose 會強制以 root 啟動 entrypoint；profile Dockerfile 是 build-time 環境配方，一般不設定 `USER`。若偵測到 `/workspace` 的 UID/GID 與容器內 `opencode` 不一致，entrypoint 會先在容器內調整 `opencode` 的 UID/GID，整理 `/home/opencode` 權限，然後再以 `opencode` 身份執行主命令。這讓不同 host 使用者 ID 的 bind mount 與 named volume 在大多數情境下都能直接讀寫。
 
 ## 單 Container 限制
 
