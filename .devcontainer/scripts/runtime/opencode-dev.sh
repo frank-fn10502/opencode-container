@@ -16,6 +16,8 @@ usage() {
 Usage: opencode-dev [path]
        opencode-dev profile set <name> [path]
        opencode-dev profile status [path]
+       opencode-dev image list
+       opencode-dev image rm <name:tag>
        opencode-dev --uninstall
        opencode-dev --admin-help
 
@@ -30,6 +32,10 @@ Commands:
             Select a profile for the current or specified project.
   profile status [path]
             Show the selected profile and available user/project profiles.
+  image list
+            List local opencode-dev images.
+  image rm <name:tag>
+            Remove one explicitly named opencode-dev image.
   --uninstall
             Remove the opencode-dev shell profile block and installed runtime.
   --admin-help
@@ -51,6 +57,12 @@ Debug/Admin commands:
 
   opencode-dev profile set <name> [path]
       Save <name> as the selected profile for the current or specified project.
+
+  opencode-dev image list
+      List local images under localhost/opencode-dev-yuta.
+
+  opencode-dev image rm <name:tag>
+      Remove one explicitly named local image, such as localhost/opencode-dev-yuta:1.4.7.
 
 Only one container named opencode-dev-yuta is allowed at a time. If one already
 exists, this script asks whether to close it. Refusing leaves it untouched and
@@ -153,6 +165,11 @@ case "${command_name}" in
   profile)
     shift || true
     run_profile_command "$@"
+    ;;
+
+  image)
+    shift || true
+    bash "${SCRIPT_DIR}/image.sh" "$@"
     ;;
 
   stop)

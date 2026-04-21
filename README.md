@@ -145,12 +145,73 @@ opencode-dev --admin-help
 查看 container、Compose 與 debug 相關細節。
 
 ```bash
+opencode-dev image list
+```
+
+列出本機的 `localhost/opencode-dev-yuta:<tag>` image，包含目前設定使用的 base image、`base` alias、兩者的對應關係，以及是否仍有 container 使用。
+
+```bash
+opencode-dev image rm localhost/opencode-dev-yuta:<tag>
+```
+
+刪除指定的環境 image 以節省空間。這個指令只接受完整的 `name:tag`，例如：
+
+```bash
+opencode-dev image rm localhost/opencode-dev-yuta:1.4.7
+```
+
+目前 opencode 虛擬環境使用中的基礎 image，以及 `localhost/opencode-dev-yuta:base` alias 會在 `image list` 中標注為 `protected`，且 `image rm` 會拒絕刪除並說明原因。若要節省空間，請刪除舊版 image 或 profile 產生出的 image。
+
+```bash
 opencode-dev --uninstall
 ```
 
 移除 shell profile 中的 `opencode-dev` 區塊，並刪除 `~/.local/bin/opencode-dev-yuta/` 中由本工具安裝的 runtime。
 
 解除安裝不會刪除 Docker image，也不會刪除 OpenCode 的 Docker volumes，避免誤刪登入狀態與 session data。
+
+## 測試用 Web UI Container
+
+專案另外提供一個長時間執行的 Compose service：
+
+```text
+opencode-web-test
+```
+
+它會在 container 內執行：
+
+```bash
+opencode serve --hostname 0.0.0.0 --port 8001
+```
+
+並把 host 的 `8001` 映射到 container 的 `8001`。啟動前請先執行過 `./init.sh`，讓本機有指定的 image 與 `~/.opencode-dev-yuta/` 設定目錄。
+
+在專案根目錄啟動：
+
+```bash
+OPENCODE_DEV_IMAGE="$(sed -n 's/^OPENCODE_DEV_IMAGE=//p' .devcontainer/image.profile)" \
+OPENCODE_DEV_WORKSPACE="$(pwd)" \
+OPENCODE_DEV_USER_CONFIG="${HOME}/.opencode-dev-yuta" \
+docker compose -f .devcontainer/docker-compose.yml up -d opencode-web-test
+```
+
+開啟：
+
+```text
+http://localhost:8001
+```
+
+若需要設定 server password，可在啟動時加上：
+
+```bash
+OPENCODE_SERVER_PASSWORD="<password>"
+```
+
+停止測試 container：
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml stop opencode-web-test
+```
 
 ## 更新 Image
 
