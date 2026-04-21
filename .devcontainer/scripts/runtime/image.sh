@@ -133,14 +133,18 @@ confirm_image_rm() {
   local image="$1"
   local answer
 
-  printf 'Remove Docker image %s? [y/N] ' "${image}" >&2
+  printf 'Remove Docker image %s? [Yes/No] ' "${image}" >&2
   read -r answer
   case "${answer}" in
-    y|Y|yes|YES)
+    Yes)
       return 0
       ;;
-    *)
+    No|"")
       printf 'Aborted. Image was left untouched: %s\n' "${image}" >&2
+      return 1
+      ;;
+    *)
+      printf 'Please type Yes or No. Image was left untouched: %s\n' "${image}" >&2
       return 1
       ;;
   esac
