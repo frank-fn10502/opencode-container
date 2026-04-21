@@ -23,11 +23,11 @@ Common usage:
   opencode-dev               Open the current directory with OpenCode.
   opencode-dev /some/project Open that project directory with OpenCode.
   opencode-dev profile set python
-                             Select the python profile for this project and open it.
+                             Select the python profile for this project.
 
 Commands:
   profile set <name> [path]
-            Select a profile for the current or specified project, then open OpenCode.
+            Select a profile for the current or specified project.
   profile status [path]
             Show the selected profile and available user/project profiles.
   --uninstall
@@ -50,8 +50,7 @@ Debug/Admin commands:
       Stop and remove the existing opencode-dev-yuta container.
 
   opencode-dev profile set <name> [path]
-      Save <name> as the selected profile for the current or specified project,
-      then open OpenCode with that profile.
+      Save <name> as the selected profile for the current or specified project.
 
 Only one container named opencode-dev-yuta is allowed at a time. If one already
 exists, this script asks whether to close it. Refusing leaves it untouched and
@@ -84,21 +83,31 @@ run_profile_command() {
       profile_name="$1"
       shift || true
       project_arg=""
-      if [[ $# -gt 0 && "${1}" != "--" ]]; then
+      if [[ $# -gt 0 ]]; then
+        if [[ "${1}" == "--" ]]; then
+          printf 'opencode-dev profile set does not accept OpenCode arguments.\n' >&2
+          printf 'Usage: opencode-dev profile set <name> [path]\n' >&2
+          exit 2
+        fi
         project_arg="$1"
         shift || true
       fi
-      if [[ $# -gt 0 && "${1}" == "--" ]]; then
-        shift || true
+      if [[ $# -gt 0 ]]; then
+        printf 'Too many arguments for profile set.\n' >&2
+        printf 'Usage: opencode-dev profile set <name> [path]\n' >&2
+        exit 2
       fi
 
       project_dir="$(resolve_project_dir "${project_arg}")"
       write_selected_profile "${project_dir}" "${profile_name}"
-      remove_existing_container_if_allowed
-      run_opencode "${project_dir}" "$@"
       ;;
     status)
       shift || true
+      if [[ $# -gt 1 ]]; then
+        printf 'Too many arguments for profile status.\n' >&2
+        printf 'Usage: opencode-dev profile status [path]\n' >&2
+        exit 2
+      fi
       show_profile_status "$(resolve_project_dir "${1:-}")"
       ;;
     ""|-h|--help)
@@ -133,6 +142,10 @@ case "${command_name}" in
 
   shell)
     shift || true
+    if [[ $# -gt 0 ]]; then
+      printf 'opencode-dev shell does not accept extra arguments.\n' >&2
+      exit 2
+    fi
     remove_existing_container_if_allowed
     run_shell "$(resolve_project_dir "")"
     ;;
@@ -155,19 +168,22 @@ case "${command_name}" in
     run_opencode "$(resolve_project_dir "")"
     ;;
 
-  --)
-    shift || true
-    remove_existing_container_if_allowed
-    run_opencode "$(resolve_project_dir "")" "$@"
-    ;;
-
   *)
     project_arg="${command_name}"
     shift || true
-    if [[ $# -gt 0 && "${1}" == "--" ]]; then
-      shift
+    case "${project_arg}" in
+      -*)
+        printf 'Unknown option: %s\n' "${project_arg}" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+    if [[ $# -gt 0 ]]; then
+      printf 'opencode-dev does not accept OpenCode arguments.\n' >&2
+      printf 'Usage: opencode-dev [path]\n' >&2
+      exit 2
     fi
     remove_existing_container_if_allowed
-    run_opencode "$(resolve_project_dir "${project_arg}")" "$@"
+    run_opencode "$(resolve_project_dir "${project_arg}")"
     ;;
 esac

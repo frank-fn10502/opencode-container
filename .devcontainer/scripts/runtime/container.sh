@@ -65,10 +65,9 @@ compose_run_base() {
 run_opencode() {
   local project_dir="$1"
   local image
-  shift
 
   image="$(active_image_for_project "${project_dir}")"
-  compose_run_base "${project_dir}" "${image}" opencode "$@"
+  compose_run_base "${project_dir}" "${image}" opencode
 }
 
 run_shell() {

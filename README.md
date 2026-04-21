@@ -98,7 +98,7 @@ Dockerfile.opencode-dotnet
 Dockerfile.opencode-npm
 ```
 
-設定 profile 並開啟 OpenCode：
+設定 profile：
 
 ```bash
 opencode-dev profile set opencode-python
