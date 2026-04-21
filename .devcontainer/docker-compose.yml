@@ -14,6 +14,7 @@ services:
     environment:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      OPENCODE_ENABLE_EXA: "1"
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
@@ -35,6 +36,7 @@ services:
     environment:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      OPENCODE_ENABLE_EXA: "1"
     volumes:
       - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro

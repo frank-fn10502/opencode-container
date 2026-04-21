@@ -25,6 +25,10 @@
       }
     }
   },
+  "permission": {
+    "webfetch": "allow",
+    "websearch": "allow"
+  },
   "model": "ollama/qwen3.5:9b",
   "small_model": "ollama/qwen3:8b"
 }
