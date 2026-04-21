@@ -225,23 +225,48 @@ project_image_rebuild_reason() {
   printf 'profile image is outdated'
 }
 
+profile_is_customized() {
+  local scope="$1"
+  local dockerfile="$2"
+  local template
+
+  if [[ "${scope}" == "project" ]]; then
+    return 0
+  fi
+
+  template="${USER_PROFILE_TEMPLATE_DIR}/$(basename "${dockerfile}")"
+  if [[ ! -f "${template}" ]]; then
+    return 0
+  fi
+
+  [[ "$(file_sha256 "${dockerfile}")" != "$(file_sha256 "${template}")" ]]
+}
+
 confirm_rebuild_for_base_update() {
   local base_image="$1"
   local answer
 
   printf 'Base image was updated: %s\n' "${base_image}" >&2
-  printf 'Rebuild this profile image now? [Yes/No] ' >&2
-  read -r answer
-
-  case "${answer}" in
-    Yes)
-      return 0
-      ;;
-    *)
-      printf 'Skipped rebuild. Using the existing profile image for this run.\n' >&2
+  while true; do
+    printf 'This customized profile was built from the previous base image. Rebuild it now? [Yes/No] ' >&2
+    if ! read -r answer; then
+      printf '\nNo answer received. Skipped rebuild and kept the existing profile image for this run.\n' >&2
       return 1
-      ;;
-  esac
+    fi
+
+    case "${answer}" in
+      Yes|yes|Y|y)
+        return 0
+        ;;
+      No|no|N|n)
+        printf 'Skipped rebuild. Using the existing profile image for this run.\n' >&2
+        return 1
+        ;;
+      *)
+        printf 'Please answer Yes or No.\n' >&2
+        ;;
+    esac
+  done
 }
 
 ensure_profile_image() {
@@ -268,7 +293,8 @@ ensure_profile_image() {
   fi
 
   reason="$(project_image_rebuild_reason "${image}" "${base_id}" "${dockerfile_sha}" "${dockerfile}" "${profile}")"
-  if [[ "${reason}" == "base image was updated" && "${profile}" != "${DEFAULT_PROFILE}" ]]; then
+  if [[ "${reason}" == "base image was updated" ]] \
+    && profile_is_customized "${scope}" "${dockerfile}"; then
     if ! confirm_rebuild_for_base_update "${base_image}"; then
       printf '%s\n' "${image}"
       return

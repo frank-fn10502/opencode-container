@@ -79,6 +79,14 @@ user profile 在所有專案都能使用；project profile 只在該專案資料
 opencode-dev profile status
 ```
 
+在 opencode-dev 裡可以直接呼叫 OpenCode slash command 讓模型建立 project profile：
+
+```text
+/project-profile <profile-name> <需要的工具或環境描述>
+```
+
+這個 command 會要求模型只修改目前專案的 `.opencode-dev-yuta/`，建立 `Dockerfile.<profile-name>` 並寫入 `config.env`。完成後離開目前 container，再執行一次 `opencode-dev`，launcher 會 build 並使用新的 project profile。
+
 預設 profile 名稱是 `default`，它會直接使用 `localhost/opencode-dev-yuta:base`，不會另外 build profile image。`Dockerfile.default` 會保留作為可見模板，但啟動 default 時不會用它 build。
 
 launcher 會同步幾個內建 user profile template 到 user profile 目錄，並在工具更新後覆蓋同名內建檔案。除了保留名稱 `default` 之外，內建 profile 都使用 `opencode-` 前綴，避免和使用者自訂名稱撞名：
@@ -106,7 +114,7 @@ opencode-dev profile set default
 
 如果 user 與 project 同時存在同名 profile，`opencode-dev` 會優先採用 project profile，並在第一次遇到時提示。
 
-如果 base image 更新，下一次執行非 `default` profile 時會詢問是否現在重建對應的 profile image；如果任務緊急，可以先略過重建並沿用既有 profile image。
+如果 base image 更新，下一次執行客製化 profile 時會詢問 Yes/No，確認是否現在重建對應的 profile image；如果任務緊急，可以先回答 No 並沿用既有 profile image。內建且未修改的 profile 會直接重建。profile image 不存在或 profile Dockerfile 本身變更時，launcher 會直接準備需要的 profile image。
 
 profile Dockerfile 可以固定使用穩定 base alias：
 
