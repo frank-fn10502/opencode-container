@@ -26,3 +26,4 @@ opencode-output/*
 admin/ca/*.crt
 
 test_opencode/logs/
+.opencode-dev-yuta/
