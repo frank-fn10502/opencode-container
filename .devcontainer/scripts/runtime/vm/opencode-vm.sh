@@ -31,8 +31,10 @@ Commands:
   shell [name]               Open a shell inside the VM.
   run [name] -- <prompt...>  Run opencode inside the VM.
   exec [name] -- <cmd...>    Execute a command inside the VM.
-  import [name] <path>       Copy a host directory into /workspace.
-  dump [name] <path>         Copy /workspace to a host directory.
+  import [name] --src <host-path> --dist <vm-path>
+                             Copy a host path into the VM workspace.
+  dump [name] --src <vm-path> --dist <host-path>
+                             Copy a VM workspace path to a host directory.
   rm [--yes] [name]          Stop the VM and remove its volumes.
   url [name]                 Print the Web UI URL.
 
@@ -40,7 +42,7 @@ Examples:
   opencode-vm start
   opencode-vm run -- "請檢查 /workspace"
   opencode-vm create main
-  opencode-vm import main ./project
+  opencode-vm import main --src ./project --dist /workspace/project
   opencode-vm start main --port-base 2510
 USAGE
 }
@@ -480,33 +482,81 @@ run_vm() {
     opencode run "$@"
 }
 
+workspace_relative_path() {
+  local label="$1"
+  local path="$2"
+
+  case "${path}" in
+    /workspace)
+      printf '\n'
+      ;;
+    /workspace/*)
+      path="${path#/workspace/}"
+      if [[ "${path}" == *".."* ]]; then
+        printf '%s must not contain .. path segments: /workspace/%s\n' "${label}" "${path}" >&2
+        exit 2
+      fi
+      printf '%s\n' "${path}"
+      ;;
+    *)
+      printf '%s must be /workspace or a path under /workspace: %s\n' "${label}" "${path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
 copy_into_workspace() {
   local name="$1"
   local source="$2"
+  local dist="$3"
   local source_abs
+  local source_base
+  local source_parent
+  local dist_rel
 
-  if [[ ! -d "${source}" ]]; then
-    printf 'Import source is not a directory: %s\n' "${source}" >&2
+  if [[ ! -e "${source}" ]]; then
+    printf 'Import source does not exist: %s\n' "${source}" >&2
     exit 1
   fi
-  source_abs="$(cd "${source}" && pwd -P)"
+  source_parent="$(cd "$(dirname "${source}")" && pwd -P)"
+  source_base="$(basename "${source}")"
+  source_abs="${source_parent}/${source_base}"
+  dist_rel="$(workspace_relative_path "Import dist" "${dist}")"
   ensure_image_profile
   ensure_base_alias
   ensure_vm_volumes "${name}"
   docker run --rm \
     -u root \
-    -v "${source_abs}:/from:ro" \
+    -v "${source_parent}:/host-source:ro" \
     -v "$(vm_workspace_volume "${name}"):/to" \
+    -e VM_IMPORT_SOURCE_BASE="${source_base}" \
+    -e VM_IMPORT_DIST_REL="${dist_rel}" \
     "$(base_alias_ref)" \
-    bash -lc 'cp -a /from/. /to/ && chown -R opencode:opencode /to'
-  printf 'Imported %s into opencode-vm %s:/workspace.\n' "${source_abs}" "${name}"
+    bash -lc '
+      set -euo pipefail
+      target="/to"
+      if [[ -n "${VM_IMPORT_DIST_REL}" ]]; then
+        target="/to/${VM_IMPORT_DIST_REL}"
+      fi
+      mkdir -p "${target}"
+      if [[ -d "/host-source/${VM_IMPORT_SOURCE_BASE}" ]]; then
+        cp -a "/host-source/${VM_IMPORT_SOURCE_BASE}/." "${target}/"
+      else
+        cp -a "/host-source/${VM_IMPORT_SOURCE_BASE}" "${target}/"
+      fi
+      chown -R opencode:opencode "${target}"
+    '
+  printf 'Imported %s into opencode-vm %s:%s.\n' "${source_abs}" "${name}" "${dist}"
 }
 
 dump_workspace() {
   local name="$1"
-  local output="$2"
+  local source="$2"
+  local output="$3"
+  local source_rel
   local output_abs
 
+  source_rel="$(workspace_relative_path "Dump src" "${source}")"
   mkdir -p "${output}"
   output_abs="$(cd "${output}" && pwd -P)"
   ensure_image_profile
@@ -516,9 +566,22 @@ dump_workspace() {
     -u root \
     -v "$(vm_workspace_volume "${name}"):/from:ro" \
     -v "${output_abs}:/to" \
+    -e VM_DUMP_SOURCE_REL="${source_rel}" \
     "$(base_alias_ref)" \
-    bash -lc 'cp -a /from/. /to/'
-  printf 'Dumped opencode-vm %s:/workspace to %s.\n' "${name}" "${output_abs}"
+    bash -lc '
+      set -euo pipefail
+      if [[ -z "${VM_DUMP_SOURCE_REL}" ]]; then
+        cp -a /from/. /to/
+      elif [[ -d "/from/${VM_DUMP_SOURCE_REL}" ]]; then
+        cp -a "/from/${VM_DUMP_SOURCE_REL}/." /to/
+      elif [[ -f "/from/${VM_DUMP_SOURCE_REL}" ]]; then
+        cp -a "/from/${VM_DUMP_SOURCE_REL}" /to/
+      else
+        printf "Dump source does not exist: /workspace/%s\n" "${VM_DUMP_SOURCE_REL}" >&2
+        exit 1
+      fi
+    '
+  printf 'Dumped opencode-vm %s:%s to %s.\n' "${name}" "${source}" "${output_abs}"
 }
 
 parse_name_and_rest() {
@@ -582,7 +645,8 @@ parse_start_args() {
         ;;
       *)
         if [[ -n "${name}" ]]; then
-          printf 'Too many VM names.\n' >&2
+          printf 'Unexpected positional argument: %s\n' "$1" >&2
+          printf 'Use: [name] --src <path> --dist <path>.\n' >&2
           exit 2
         fi
         name="$1"
@@ -596,22 +660,58 @@ parse_start_args() {
   VM_PARSED_NAME="${name}"
 }
 
-parse_copy_args() {
+parse_transfer_args() {
   local default_name="${VM_DEFAULT_NAME}"
+  local name=""
+  local src=""
+  local dist=""
 
-  if [[ $# -eq 1 ]]; then
-    VM_PARSED_NAME="${default_name}"
-    VM_PARSED_PATH="$1"
-    return
-  fi
-  if [[ $# -eq 2 ]]; then
-    VM_PARSED_NAME="$(vm_name_or_default "$1")"
-    VM_PARSED_PATH="$2"
-    return
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --src)
+        if [[ $# -lt 2 ]]; then
+          printf 'Missing value for --src.\n' >&2
+          exit 2
+        fi
+        src="$2"
+        shift 2
+        ;;
+      --dist)
+        if [[ $# -lt 2 ]]; then
+          printf 'Missing value for --dist.\n' >&2
+          exit 2
+        fi
+        dist="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      -*)
+        printf 'Unknown option: %s\n' "$1" >&2
+        exit 2
+        ;;
+      *)
+        if [[ -n "${name}" ]]; then
+          printf 'Unexpected positional argument: %s\n' "$1" >&2
+          printf 'Use: [name] --src <path> --dist <path>.\n' >&2
+          exit 2
+        fi
+        name="$1"
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "${src}" || -z "${dist}" ]]; then
+    printf 'Expected [name] --src <path> --dist <path>.\n' >&2
+    exit 2
   fi
 
-  printf 'Expected [name] <path>.\n' >&2
-  exit 2
+  VM_PARSED_NAME="$(vm_name_or_default "${name:-${default_name}}")"
+  VM_PARSED_SOURCE="${src}"
+  VM_PARSED_DIST="${dist}"
 }
 
 command_name="${1:-}"
@@ -681,12 +781,12 @@ case "${command_name}" in
     run_vm "${VM_PARSED_NAME}" "$@"
     ;;
   import)
-    parse_copy_args "$@"
-    copy_into_workspace "${VM_PARSED_NAME}" "${VM_PARSED_PATH}"
+    parse_transfer_args "$@"
+    copy_into_workspace "${VM_PARSED_NAME}" "${VM_PARSED_SOURCE}" "${VM_PARSED_DIST}"
     ;;
   dump)
-    parse_copy_args "$@"
-    dump_workspace "${VM_PARSED_NAME}" "${VM_PARSED_PATH}"
+    parse_transfer_args "$@"
+    dump_workspace "${VM_PARSED_NAME}" "${VM_PARSED_SOURCE}" "${VM_PARSED_DIST}"
     ;;
   rm)
     assume_yes=0

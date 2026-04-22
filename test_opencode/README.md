@@ -22,12 +22,14 @@
 test_opencode/run_cpp_opencode_vm_demo.sh
 ```
 
-這支 demo script 會檢查 `test-cpp` VM 是否存在；不存在就 setup，存在就沿用或啟動。OpenCode 執行完成後，會把 VM 的 `/workspace` dump 回 `.tmp/cpptest`。它不會自動停止 VM。
+這支 demo script 會檢查 `test-cpp` VM 是否存在；不存在就 setup，存在就沿用或啟動。OpenCode 會檢查 VM 內的 `/workspace/cpptest`，執行完成後會把這個 VM source path dump 回 `.tmp/cpptest`。它不接受參數，也不會自動停止 VM；model、timeout、iterations、dump source/dist 都寫在 script 裡。
 
-可指定模型、timeout 與執行次數，參數會傳給 Python monitor：
+需要調整模型、timeout 或 dump path 時，直接修改 `run_cpp_opencode_vm_demo.sh` 上方的設定值。若要手動指定參數，可直接執行 Python monitor：
 
 ```bash
-test_opencode/run_cpp_opencode_vm_demo.sh \
+python3 test_opencode/run_cpp_opencode_monitor.py \
+  --skip-setup \
+  --workspace-dir /workspace/cpptest \
   --model ollama/qwen3.5:9b \
   --timeout 240 \
   --iterations 1

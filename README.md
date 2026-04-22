@@ -170,49 +170,6 @@ opencode-dev --uninstall
 
 解除安裝不會刪除 Docker image，也不會刪除 OpenCode 的 Docker volumes，避免誤刪登入狀態與 session data。
 
-## 測試用 Web UI Container
-
-專案另外提供一個長時間執行的 Compose service：
-
-```text
-opencode-web-test
-```
-
-它會在 container 內執行：
-
-```bash
-opencode serve --hostname 0.0.0.0 --port 8001
-```
-
-並把 host 的 `8001` 映射到 container 的 `8001`。啟動前請先執行過 `./init.sh`，讓本機有指定的 image 與 `~/.opencode-dev-yuta/` 設定目錄。
-
-在專案根目錄啟動：
-
-```bash
-OPENCODE_DEV_IMAGE="$(sed -n 's/^OPENCODE_DEV_IMAGE=//p' .devcontainer/image.profile)" \
-OPENCODE_DEV_WORKSPACE="$(pwd)" \
-OPENCODE_DEV_USER_CONFIG="${HOME}/.opencode-dev-yuta" \
-docker compose -f .devcontainer/docker-compose.yml up -d opencode-web-test
-```
-
-開啟：
-
-```text
-http://localhost:8001
-```
-
-若需要設定 server password，可在啟動時加上：
-
-```bash
-OPENCODE_SERVER_PASSWORD="<password>"
-```
-
-停止測試 container：
-
-```bash
-docker compose -f .devcontainer/docker-compose.yml stop opencode-web-test
-```
-
 ## OpenCode VM
 
 `opencode-vm` 是另一套常駐工作機模型，和 `opencode-dev` 的短生命開發 container 分開。
@@ -229,10 +186,11 @@ opencode-vm   建立常駐 container，/workspace 是 Docker named volume。
 
 ```bash
 opencode-vm create
-opencode-vm import ./project
+opencode-vm import --src ./project --dist /workspace/project
 opencode-vm start
 opencode-vm run -- "請檢查 /workspace"
-opencode-vm dump ./opencode-vm-output
+opencode-vm dump --src /workspace --dist ./opencode-vm-output
+opencode-vm dump --src /workspace/project-a --dist ./project-a-output
 opencode-vm stop
 ```
 
@@ -250,12 +208,15 @@ VM 內的 Linux 使用者固定為 `opencode`，主機名稱會命名為 `openco
 
 ```bash
 opencode-vm create main
-opencode-vm import main ./project
+opencode-vm import main --src ./project --dist /workspace/project
 opencode-vm start main --port-base 2510
 opencode-vm shell main
 opencode-vm run main -- "請執行測試"
-opencode-vm dump main ./main-output
+opencode-vm dump main --src /workspace --dist ./main-output
+opencode-vm dump main --src /workspace/project-a --dist ./project-a-output
 ```
+
+`--src` 一律表示來源，`--dist` 一律表示目的地。`import` 會從 host `--src` 複製到 VM `--dist`；`dump` 則會從 VM `--src` 複製到 host `--dist`。VM 端路徑必須是 `/workspace` 或其底下的路徑。
 
 常用管理指令：
 
@@ -264,6 +225,8 @@ opencode-vm list
 opencode-vm status [name]
 opencode-vm logs [name]
 opencode-vm url [name]
+opencode-vm import [name] --src <host-path> --dist <vm-path>
+opencode-vm dump [name] --src <vm-path> --dist <host-path>
 opencode-vm restart [name] [--port-base N] [--webui-port N] [--ssh-port N]
 opencode-vm rm [--yes] [name]
 ```

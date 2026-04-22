@@ -21,12 +21,11 @@ VM_SCRIPT = PROJECT_ROOT / ".devcontainer" / "scripts" / "runtime" / "vm" / "ope
 SETUP_VM_SCRIPT = SCRIPT_DIR / "setup_opencode_vm_runner.sh"
 DEFAULT_VM_NAME = "test-cpp"
 LOG_DIR = SCRIPT_DIR / "logs"
-VM_RESULT_DIR = "/workspace/.opencode-test-results"
 TAIWAN_TZ = ZoneInfo("Asia/Taipei")
 
-PROMPT = """請檢查 /workspace 這個專案中的 C++ 檔案。
+PROMPT = """請檢查 {workspace_dir} 這個專案中的 C++ 檔案。
 
-請自行在 /workspace 中搜尋 .cpp/.cc/.cxx/.hpp/.hh/.hxx/.h 檔案，不要依賴外部提供的 inventory。
+請自行在 {workspace_dir} 中搜尋 .cpp/.cc/.cxx/.hpp/.hh/.hxx/.h 檔案，不要依賴外部提供的 inventory。
 請用繁體中文回答，內容包含：
 1. 專案中有哪些 .cpp/.cc/.cxx/.hpp/.hh/.hxx/.h 檔案。
 2. 每個檔案的主要功能是什麼。
@@ -39,6 +38,7 @@ PROMPT = """請檢查 /workspace 這個專案中的 C++ 檔案。
 完成後請把最終 Markdown 內容寫入 VM 內：
 {vm_result_path}
 
+不要寫入或讀取 /tmp、/var/tmp、host 路徑或 {workspace_dir} 以外的任何路徑。
 請在標準輸出中簡短回報已完成，並附上輸出檔案路徑。
 """
 
@@ -65,6 +65,11 @@ def parse_args() -> argparse.Namespace:
         "--skip-setup",
         action="store_true",
         help="Do not recreate/import/start the test VM before running opencode.",
+    )
+    parser.add_argument(
+        "--workspace-dir",
+        default="/workspace",
+        help="VM project directory to inspect. Default: /workspace.",
     )
     parser.add_argument(
         "--interval",
@@ -117,8 +122,8 @@ def make_result_file(run_started_at: dt.datetime, override: Path | None) -> Path
     return LOG_DIR / filename
 
 
-def vm_result_path_for(local_path: Path) -> str:
-    return f"{VM_RESULT_DIR}/{local_path.name}"
+def vm_result_path_for(local_path: Path, workspace_dir: str) -> str:
+    return f"{workspace_dir.rstrip('/')}/.opencode-test-results/{local_path.name}"
 
 
 def run_command(cmd: list[str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
@@ -204,8 +209,8 @@ def run_command_streaming(
     )
 
 
-def build_prompt(vm_result_path: str) -> str:
-    return PROMPT.format(vm_result_path=vm_result_path)
+def build_prompt(workspace_dir: str, vm_result_path: str) -> str:
+    return PROMPT.format(workspace_dir=workspace_dir, vm_result_path=vm_result_path)
 
 
 def ensure_runner(vm_name: str, port_base: int, skip_setup: bool) -> str:
@@ -252,9 +257,10 @@ def run_opencode(
     model: str,
     timeout: float,
     result_path: Path,
+    workspace_dir: str,
 ) -> subprocess.CompletedProcess[str]:
-    vm_result_path = vm_result_path_for(result_path)
-    prompt = build_prompt(vm_result_path)
+    vm_result_path = vm_result_path_for(result_path, workspace_dir)
+    prompt = build_prompt(workspace_dir, vm_result_path)
     cmd = [
         "bash",
         str(VM_SCRIPT),
@@ -311,9 +317,15 @@ def main() -> int:
                 f"result file: {result_path.relative_to(PROJECT_ROOT)}",
                 flush=True,
             )
-            vm_result_path = vm_result_path_for(result_path)
+            vm_result_path = vm_result_path_for(result_path, args.workspace_dir)
             print(f"VM result file: {vm_result_path}", flush=True)
-            result = run_opencode(args.vm_name, args.model, args.timeout, result_path)
+            result = run_opencode(
+                args.vm_name,
+                args.model,
+                args.timeout,
+                result_path,
+                args.workspace_dir,
+            )
             finished_at = now_in_taiwan()
             body = result.stdout.strip()
             try:

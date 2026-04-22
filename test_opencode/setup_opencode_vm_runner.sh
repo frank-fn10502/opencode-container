@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VM_SCRIPT="${PROJECT_ROOT}/.devcontainer/scripts/runtime/vm/opencode-vm.sh"
 SOURCE_DIR="${PROJECT_ROOT}/.tmp/cpptest"
+VM_IMPORT_DIST="${OPENCODE_TEST_VM_IMPORT_DIST:-/workspace/cpptest}"
 
 vm_name="${OPENCODE_TEST_VM_NAME:-test-cpp}"
 port_base="${OPENCODE_TEST_VM_PORT_BASE:-2600}"
@@ -56,8 +57,8 @@ if [[ "${reset_vm}" == "1" ]]; then
 fi
 
 bash "${VM_SCRIPT}" create "${vm_name}" --port-base "${port_base}"
-bash "${VM_SCRIPT}" import "${vm_name}" "${SOURCE_DIR}"
+bash "${VM_SCRIPT}" import "${vm_name}" --src "${SOURCE_DIR}" --dist "${VM_IMPORT_DIST}"
 bash "${VM_SCRIPT}" start "${vm_name}" --port-base "${port_base}"
-bash "${VM_SCRIPT}" exec "${vm_name}" -- mkdir -p /workspace/.opencode-test-results
+bash "${VM_SCRIPT}" exec "${vm_name}" -- mkdir -p "${VM_IMPORT_DIST}/.opencode-test-results"
 
 printf 'Ready opencode-vm test runner: %s\n' "${vm_name}"
