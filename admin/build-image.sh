@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
+DOCKERFILE_DIR="${DEVCONTAINER_DIR}/docker"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
@@ -28,7 +29,7 @@ localhost/opencode-dev-yuta:<opencode-version>-env.<revision>, save it under
 
 Options:
   --dockerfile FILE
-              Build from a Dockerfile under .devcontainer/.
+              Build from a Dockerfile under .devcontainer/docker/.
               Default: Dockerfile.insecure
   --build-arg KEY=VALUE
               Pass through one build arg. Repeatable.
@@ -81,7 +82,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 dockerfile_name="${dockerfile_name:-Dockerfile}"
-dockerfile_path="${DEVCONTAINER_DIR}/${dockerfile_name}"
+dockerfile_path="${DOCKERFILE_DIR}/${dockerfile_name}"
 
 if [[ ! -f "${dockerfile_path}" ]]; then
   printf 'Dockerfile not found: %s\n' "${dockerfile_path}" >&2

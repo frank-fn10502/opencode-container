@@ -2,13 +2,15 @@
 
 COMMON_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_OR_SCRIPTS_DIR="$(cd "${COMMON_SCRIPT_DIR}/.." && pwd)"
-if [[ -f "${INSTALL_OR_SCRIPTS_DIR}/docker-compose.yml" ]]; then
+if [[ -d "${INSTALL_OR_SCRIPTS_DIR}/compose" ]]; then
   DEVCONTAINER_DIR="${INSTALL_OR_SCRIPTS_DIR}"
 else
   DEVCONTAINER_DIR="$(cd "${COMMON_SCRIPT_DIR}/../.." && pwd)"
 fi
 
-COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
+COMPOSE_DIR="${DEVCONTAINER_DIR}/compose"
+DEV_COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.dev.yml"
+VM_COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.vm.yml"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 
 if [[ -f "${DEVCONTAINER_DIR}/init/init-opencode.sh" ]]; then

@@ -267,4 +267,6 @@ opencode-vm rm [--yes] [name]
 
 非必要不要更新 OpenCode version。若只是調整 default/base 環境，通常只需要增加 `.devcontainer/image.profile` 的 `ENV_REVISION`，再執行 `./admin/build-image.sh`。這個 build 會同時產生 opencode-dev base image 與 opencode-vm image。
 
+runtime compose 設定集中在 `.devcontainer/compose/`：`docker-compose.dev.yml` 給短生命週期 dev container 使用，`docker-compose.vm.yml` 給常駐 VM 使用。Dockerfile 集中在 `.devcontainer/docker/`。
+
 更完整的設計細節在 [.devcontainer/docs/README.md](.devcontainer/docs/README.md)。

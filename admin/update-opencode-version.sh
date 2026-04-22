@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
+DOCKERFILE_DIR="${DEVCONTAINER_DIR}/docker"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
@@ -27,7 +28,7 @@ build-image.sh, which uses the pinned version from image.profile.
 
 Options:
   --dockerfile FILE
-              Build from a Dockerfile under .devcontainer/.
+              Build from a Dockerfile under .devcontainer/docker/.
               Default: Dockerfile.insecure
   --env-revision N
               Set the environment revision for the resolved OpenCode version.
@@ -90,7 +91,7 @@ if [[ -n "${requested_env_revision}" && ! "${requested_env_revision}" =~ ^[1-9][
   exit 2
 fi
 
-dockerfile_path="${DEVCONTAINER_DIR}/${dockerfile_name}"
+dockerfile_path="${DOCKERFILE_DIR}/${dockerfile_name}"
 if [[ ! -f "${dockerfile_path}" ]]; then
   printf 'Dockerfile not found: %s\n' "${dockerfile_path}" >&2
   exit 1

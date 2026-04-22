@@ -1,0 +1,31 @@
+services:
+  opencode:
+    image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
+    container_name: opencode-dev-yuta
+    pull_policy: never
+    user: root
+    entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
+    command: ["opencode"]
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      OPENCODE_ENABLE_EXA: "1"
+    volumes:
+      - ${OPENCODE_DEV_WORKSPACE:?Set OPENCODE_DEV_WORKSPACE to the host project path}:/workspace
+      - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
+      - ../config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - ../config/AGENTS.md:/home/opencode/.config/opencode/AGENTS.md:ro
+      - ../config/command:/home/opencode/.config/opencode/command:ro
+      - opencode-home-yuta:/home/opencode/.local/share/opencode
+      - opencode-state-yuta:/home/opencode/.local/state
+
+volumes:
+  opencode-home-yuta:
+    name: opencode-home-yuta
+  opencode-state-yuta:
+    name: opencode-state-yuta

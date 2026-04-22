@@ -73,7 +73,7 @@ Implementation details:
   User profiles live at ~/.opencode-dev-yuta/Dockerfile.<profile>.
   Project profiles live at <project>/.opencode-dev-yuta/Dockerfile.<profile>.
   Selected profiles are stored in config.env beside the relevant profile files.
-  Container settings are defined in docker-compose.yml.
+  Container settings are defined in compose/docker-compose.dev.yml.
   The selected project directory is mounted into the container at /workspace.
   OpenCode runs inside a short-lived Docker container named opencode-dev-yuta.
   OpenCode state is stored in Docker named volumes, not in the project directory.

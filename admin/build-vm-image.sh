@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEVCONTAINER_DIR="${PROJECT_ROOT}/.devcontainer"
+DOCKERFILE_DIR="${DEVCONTAINER_DIR}/docker"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
@@ -29,7 +30,7 @@ and save it under .docker_imgs/.
 
 Options:
   --dockerfile FILE
-              Build from a Dockerfile under .devcontainer/.
+              Build from a Dockerfile under .devcontainer/docker/.
               Default: Dockerfile.vm
   --vm-revision N
               Set the VM image revision. Default: keep image.profile VM_REVISION,
@@ -85,7 +86,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-dockerfile_path="${DEVCONTAINER_DIR}/${dockerfile_name}"
+dockerfile_path="${DOCKERFILE_DIR}/${dockerfile_name}"
 if [[ ! -f "${dockerfile_path}" ]]; then
   printf 'Dockerfile not found: %s\n' "${dockerfile_path}" >&2
   exit 1

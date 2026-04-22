@@ -27,7 +27,7 @@ OPENCODE_VM_IMAGE=localhost/opencode-dev-yuta:1.4.7-env.1-vm.1
 
 非必要不要執行 `update-opencode-version.sh`。大多數維護工作只需要調整 Dockerfile 或設定，必要時 bump `ENV_REVISION`，然後執行 `build-image.sh`。
 
-預設 build 採用 `.devcontainer/Dockerfile.insecure`。內網環境先求能跑，再視需要建立 CA-aware image。
+預設 build 採用 `.devcontainer/docker/Dockerfile.insecure`。內網環境先求能跑，再視需要建立 CA-aware image。
 
 ## 常見流程
 

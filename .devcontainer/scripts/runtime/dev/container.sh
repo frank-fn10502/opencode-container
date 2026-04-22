@@ -76,7 +76,7 @@ compose_run_base() {
   OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
   docker compose \
     --env-file "${IMAGE_PROFILE}" \
-    --file "${COMPOSE_FILE}" \
+    --file "${DEV_COMPOSE_FILE}" \
     run \
     --rm \
     --name "${CONTAINER_NAME}" \

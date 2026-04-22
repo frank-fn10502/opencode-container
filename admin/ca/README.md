@@ -17,7 +17,7 @@ admin/ca/company-root-ca.crt
 admin/ca/company-intermediate-ca.crt
 ```
 
-`build-ca-image.sh` 會讀取這個資料夾下所有 `.crt`，合併成 bundle，透過 `COMPANY_CA_CERT_B64` 傳給 `.devcontainer/Dockerfile`。
+`build-ca-image.sh` 會讀取這個資料夾下所有 `.crt`，合併成 bundle，透過 `COMPANY_CA_CERT_B64` 傳給 `.devcontainer/docker/Dockerfile`。
 
 如果這個資料夾沒有任何 `.crt`，`build-ca-image.sh` 會停止，不會建立 CA-aware image。
 

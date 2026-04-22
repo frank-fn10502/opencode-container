@@ -295,7 +295,7 @@ compose_vm() {
   docker compose \
     --env-file "${IMAGE_PROFILE}" \
     --project-name "${VM_PREFIX}-${name}" \
-    --file "${COMPOSE_FILE}" \
+    --file "${VM_COMPOSE_FILE}" \
     "$@"
 }
 

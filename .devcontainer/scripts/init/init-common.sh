@@ -2,7 +2,7 @@
 
 INIT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_INSTALL_OR_SCRIPTS_DIR="$(cd "${INIT_SCRIPT_DIR}/.." && pwd)"
-if [[ -f "${INIT_INSTALL_OR_SCRIPTS_DIR}/docker-compose.yml" ]]; then
+if [[ -d "${INIT_INSTALL_OR_SCRIPTS_DIR}/compose" ]]; then
   INIT_DEVCONTAINER_DIR="${INIT_INSTALL_OR_SCRIPTS_DIR}"
   INIT_RUNTIME_SCRIPT_DIR="${INIT_DEVCONTAINER_DIR}/runtime"
 else
@@ -124,6 +124,7 @@ reset_install_dir() {
     "${INSTALL_DIR}/runtime/dev" \
     "${INSTALL_DIR}/runtime/vm" \
     "${INSTALL_DIR}/init" \
+    "${INSTALL_DIR}/compose" \
     "${INSTALL_DIR}/config"
 }
 
@@ -134,7 +135,8 @@ install_common_runtime() {
   cp "${INIT_SCRIPT_DIR}/init-opencode-dev.sh" "${INSTALL_DIR}/init/init-opencode-dev.sh"
   cp "${INIT_SCRIPT_DIR}/init-opencode-vm.sh" "${INSTALL_DIR}/init/init-opencode-vm.sh"
   cp "${INIT_SCRIPT_DIR}/install-image.sh" "${INSTALL_DIR}/init/install-image.sh"
-  cp "${INIT_DEVCONTAINER_DIR}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
+  cp "${INIT_DEVCONTAINER_DIR}/compose/docker-compose.dev.yml" "${INSTALL_DIR}/compose/docker-compose.dev.yml"
+  cp "${INIT_DEVCONTAINER_DIR}/compose/docker-compose.vm.yml" "${INSTALL_DIR}/compose/docker-compose.vm.yml"
   cp "${INIT_DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
   cp "${INIT_DEVCONTAINER_DIR}/config/AGENTS.md" "${INSTALL_DIR}/config/AGENTS.md"
   cp -R "${INIT_DEVCONTAINER_DIR}/config/command" "${INSTALL_DIR}/config/command"

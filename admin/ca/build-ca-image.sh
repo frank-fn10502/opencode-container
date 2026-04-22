@@ -15,7 +15,7 @@ admin/ca/ before running this script.
 
 Options:
   --dockerfile FILE
-              Build from a Dockerfile under .devcontainer/.
+              Build from a Dockerfile under .devcontainer/docker/.
               Default: Dockerfile
   --build-arg KEY=VALUE
               Pass through one build arg. Repeatable.
