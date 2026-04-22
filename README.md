@@ -217,6 +217,7 @@ opencode-vm dump main --src /workspace/project-a --dist ./project-a-output
 ```
 
 `--src` 一律表示來源，`--dist` 一律表示目的地。`import` 會從 host `--src` 複製到 VM `--dist`；`dump` 則會從 VM `--src` 複製到 host `--dist`。VM 端路徑必須是 `/workspace` 或其底下的路徑。
+跨 host/VM 複製時會自動轉換 owner：`import` 寫入 VM 的檔案會屬於 `opencode:opencode`；`dump` 寫回 host 的檔案會屬於 host 目的資料夾的 uid/gid，避免把 container 內的 uid/gid 帶回主機。
 
 常用管理指令：
 

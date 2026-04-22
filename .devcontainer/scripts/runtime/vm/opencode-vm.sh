@@ -514,6 +514,19 @@ workspace_relative_path() {
   esac
 }
 
+path_owner_id() {
+  local path="$1"
+
+  case "$(uname -s)" in
+    Darwin|FreeBSD)
+      stat -f '%u:%g' "${path}"
+      ;;
+    *)
+      stat -c '%u:%g' "${path}"
+      ;;
+  esac
+}
+
 copy_into_workspace() {
   local name="$1"
   local source="$2"
@@ -532,7 +545,7 @@ copy_into_workspace() {
   source_abs="${source_parent}/${source_base}"
   dist_rel="$(workspace_relative_path "Import dist" "${dist}")"
   ensure_image_profile
-  ensure_base_alias
+  ensure_vm_image
   ensure_vm_volumes "${name}"
   docker run --rm \
     -u root \
@@ -540,20 +553,21 @@ copy_into_workspace() {
     -v "$(vm_workspace_volume "${name}"):/to" \
     -e VM_IMPORT_SOURCE_BASE="${source_base}" \
     -e VM_IMPORT_DIST_REL="${dist_rel}" \
-    "$(base_alias_ref)" \
+    "$(vm_image_ref)" \
     bash -lc '
       set -euo pipefail
       target="/to"
       if [[ -n "${VM_IMPORT_DIST_REL}" ]]; then
         target="/to/${VM_IMPORT_DIST_REL}"
       fi
+      source_path="/host-source/${VM_IMPORT_SOURCE_BASE}"
       mkdir -p "${target}"
-      if [[ -d "/host-source/${VM_IMPORT_SOURCE_BASE}" ]]; then
-        cp -a "/host-source/${VM_IMPORT_SOURCE_BASE}/." "${target}/"
+      chown opencode:opencode "${target}"
+      if [[ -d "${source_path}" ]]; then
+        rsync -a --chown=opencode:opencode "${source_path}/" "${target}/"
       else
-        cp -a "/host-source/${VM_IMPORT_SOURCE_BASE}" "${target}/"
+        rsync -a --chown=opencode:opencode "${source_path}" "${target}/"
       fi
-      chown -R opencode:opencode "${target}"
     '
   printf 'Imported %s into opencode-vm %s:%s.\n' "${source_abs}" "${name}" "${dist}"
 }
@@ -564,27 +578,36 @@ dump_workspace() {
   local output="$3"
   local source_rel
   local output_abs
+  local output_owner
+  local output_uid
+  local output_gid
 
   source_rel="$(workspace_relative_path "Dump src" "${source}")"
   mkdir -p "${output}"
   output_abs="$(cd "${output}" && pwd -P)"
+  output_owner="$(path_owner_id "${output_abs}")"
+  output_uid="${output_owner%:*}"
+  output_gid="${output_owner#*:}"
   ensure_image_profile
-  ensure_base_alias
+  ensure_vm_image
   docker volume inspect "$(vm_workspace_volume "${name}")" >/dev/null
   docker run --rm \
     -u root \
     -v "$(vm_workspace_volume "${name}"):/from:ro" \
     -v "${output_abs}:/to" \
     -e VM_DUMP_SOURCE_REL="${source_rel}" \
-    "$(base_alias_ref)" \
+    -e VM_DUMP_OUTPUT_UID="${output_uid}" \
+    -e VM_DUMP_OUTPUT_GID="${output_gid}" \
+    "$(vm_image_ref)" \
     bash -lc '
       set -euo pipefail
+      rsync_chown="${VM_DUMP_OUTPUT_UID}:${VM_DUMP_OUTPUT_GID}"
       if [[ -z "${VM_DUMP_SOURCE_REL}" ]]; then
-        cp -a /from/. /to/
+        rsync -a --chown="${rsync_chown}" /from/ /to/
       elif [[ -d "/from/${VM_DUMP_SOURCE_REL}" ]]; then
-        cp -a "/from/${VM_DUMP_SOURCE_REL}/." /to/
+        rsync -a --chown="${rsync_chown}" "/from/${VM_DUMP_SOURCE_REL}/" /to/
       elif [[ -f "/from/${VM_DUMP_SOURCE_REL}" ]]; then
-        cp -a "/from/${VM_DUMP_SOURCE_REL}" /to/
+        rsync -a --chown="${rsync_chown}" "/from/${VM_DUMP_SOURCE_REL}" /to/
       else
         printf "Dump source does not exist: /workspace/%s\n" "${VM_DUMP_SOURCE_REL}" >&2
         exit 1

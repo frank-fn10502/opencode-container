@@ -29,7 +29,7 @@ services:
     container_name: ${OPENCODE_VM_CONTAINER:-opencode-vm-yuta-default}
     hostname: ${OPENCODE_VM_HOSTNAME:-opencode-vm-default}
     pull_policy: never
-    user: root
+    user: opencode
     entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
     working_dir: /workspace
     command:
@@ -48,6 +48,9 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       OPENCODE_ENABLE_EXA: "1"
       OPENCODE_INIT_WORKSPACE_OWNERSHIP: "1"
+      HOME: /home/opencode
+      USER: opencode
+      LOGNAME: opencode
     ports:
       - "${OPENCODE_VM_WEBUI_PORT:-2501}:8001"
       - "${OPENCODE_VM_SSH_PORT:-2502}:22"

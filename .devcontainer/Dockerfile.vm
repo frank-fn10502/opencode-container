@@ -15,6 +15,12 @@ RUN apt-get update \
         tmux \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /run/sshd
+RUN mkdir -p \
+        /run/sshd \
+        /home/opencode/.cache \
+        /home/opencode/.ssh \
+    && chown -R opencode:opencode \
+        /home/opencode/.cache \
+        /home/opencode/.ssh
 
 WORKDIR /workspace
