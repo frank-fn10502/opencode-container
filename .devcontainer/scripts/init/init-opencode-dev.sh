@@ -100,13 +100,15 @@ install_runtime() {
     rm -rf "${INSTALL_DIR}"
   fi
 
-  mkdir -p "${INSTALL_DIR}/bin" "${INSTALL_DIR}/runtime" "${INSTALL_DIR}/init" "${INSTALL_DIR}/config"
-  cp "${RUNTIME_SCRIPT_DIR}/opencode-dev-dispatcher.sh" "${INSTALL_DIR}/bin/opencode-dev"
-  cp "${RUNTIME_SCRIPT_DIR}/opencode-dev.sh" "${INSTALL_DIR}/runtime/opencode-dev.sh"
+  mkdir -p "${INSTALL_DIR}/bin" "${INSTALL_DIR}/runtime" "${INSTALL_DIR}/runtime/dev" "${INSTALL_DIR}/runtime/vm" "${INSTALL_DIR}/init" "${INSTALL_DIR}/config"
+  cp "${RUNTIME_SCRIPT_DIR}/dev/opencode-dev-dispatcher.sh" "${INSTALL_DIR}/bin/opencode-dev"
+  cp "${RUNTIME_SCRIPT_DIR}/vm/opencode-vm-dispatcher.sh" "${INSTALL_DIR}/bin/opencode-vm"
+  cp "${RUNTIME_SCRIPT_DIR}/dev/opencode-dev.sh" "${INSTALL_DIR}/runtime/dev/opencode-dev.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/vm/opencode-vm.sh" "${INSTALL_DIR}/runtime/vm/opencode-vm.sh"
   cp "${RUNTIME_SCRIPT_DIR}/common.sh" "${INSTALL_DIR}/runtime/common.sh"
-  cp "${RUNTIME_SCRIPT_DIR}/profiles.sh" "${INSTALL_DIR}/runtime/profiles.sh"
-  cp "${RUNTIME_SCRIPT_DIR}/container.sh" "${INSTALL_DIR}/runtime/container.sh"
-  cp "${RUNTIME_SCRIPT_DIR}/image.sh" "${INSTALL_DIR}/runtime/image.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/dev/profiles.sh" "${INSTALL_DIR}/runtime/dev/profiles.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/dev/container.sh" "${INSTALL_DIR}/runtime/dev/container.sh"
+  cp "${RUNTIME_SCRIPT_DIR}/dev/image.sh" "${INSTALL_DIR}/runtime/dev/image.sh"
   cp "${SCRIPT_DIR}/init-opencode-dev.sh" "${INSTALL_DIR}/init/init-opencode-dev.sh"
   cp "${SCRIPT_DIR}/install-image.sh" "${INSTALL_DIR}/init/install-image.sh"
   cp "${DEVCONTAINER_DIR}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
@@ -118,11 +120,13 @@ install_runtime() {
   cp -R "${DEVCONTAINER_DIR}/config/user-profiles" "${INSTALL_DIR}/config/user-profiles"
   cp "${IMAGE_PROFILE}" "${INSTALL_DIR}/image.profile"
   chmod 755 "${INSTALL_DIR}/bin/opencode-dev"
-  chmod 755 "${INSTALL_DIR}/runtime/opencode-dev.sh"
+  chmod 755 "${INSTALL_DIR}/bin/opencode-vm"
+  chmod 755 "${INSTALL_DIR}/runtime/dev/opencode-dev.sh"
+  chmod 755 "${INSTALL_DIR}/runtime/vm/opencode-vm.sh"
   chmod 644 "${INSTALL_DIR}/runtime/common.sh"
-  chmod 644 "${INSTALL_DIR}/runtime/profiles.sh"
-  chmod 644 "${INSTALL_DIR}/runtime/container.sh"
-  chmod 755 "${INSTALL_DIR}/runtime/image.sh"
+  chmod 644 "${INSTALL_DIR}/runtime/dev/profiles.sh"
+  chmod 644 "${INSTALL_DIR}/runtime/dev/container.sh"
+  chmod 755 "${INSTALL_DIR}/runtime/dev/image.sh"
   chmod 755 "${INSTALL_DIR}/init/init-opencode-dev.sh"
   chmod 755 "${INSTALL_DIR}/init/install-image.sh"
   printf '%s\n' "${profile}" > "${INSTALL_PROFILE}"
@@ -136,6 +140,9 @@ write_profile_block() {
 # >>> opencode-dev >>>
 opencode-dev() {
   "${HOME}/.local/bin/opencode-dev-yuta/bin/opencode-dev" "$@"
+}
+opencode-vm() {
+  "${HOME}/.local/bin/opencode-dev-yuta/bin/opencode-vm" "$@"
 }
 # <<< opencode-dev <<<
 EOF

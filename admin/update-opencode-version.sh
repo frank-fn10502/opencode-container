@@ -9,6 +9,7 @@ IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 OPENCODE_VERSION=""
 ENV_REVISION="1"
+VM_REVISION=""
 
 if [[ -f "${IMAGE_PROFILE}" ]]; then
   # shellcheck source=/dev/null
@@ -135,6 +136,8 @@ else
 fi
 
 image_tag="${detected_version}-env.${next_env_revision}"
+VM_REVISION="${VM_REVISION:-1}"
+vm_image_tag="${image_tag}-vm.${VM_REVISION}"
 
 cat > "${IMAGE_PROFILE}" <<EOF
 IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
@@ -142,6 +145,9 @@ OPENCODE_VERSION=${detected_version}
 ENV_REVISION=${next_env_revision}
 IMAGE_TAG=${image_tag}
 OPENCODE_DEV_IMAGE=${IMAGE_REPOSITORY}:${image_tag}
+VM_REVISION=${VM_REVISION}
+VM_IMAGE_TAG=${vm_image_tag}
+OPENCODE_VM_IMAGE=${IMAGE_REPOSITORY}:${vm_image_tag}
 EOF
 
 printf 'Detected OpenCode version: %s\n' "${detected_version}"

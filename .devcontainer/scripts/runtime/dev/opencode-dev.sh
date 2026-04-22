@@ -4,8 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=common.sh
-source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=../common.sh
+source "${SCRIPT_DIR}/../common.sh"
 # shellcheck source=profiles.sh
 source "${SCRIPT_DIR}/profiles.sh"
 # shellcheck source=container.sh

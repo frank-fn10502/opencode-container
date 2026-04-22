@@ -213,6 +213,60 @@ OPENCODE_SERVER_PASSWORD="<password>"
 docker compose -f .devcontainer/docker-compose.yml stop opencode-web-test
 ```
 
+## OpenCode VM
+
+`opencode-vm` 是另一套常駐工作機模型，和 `opencode-dev` 的短生命開發 container 分開。
+
+```text
+opencode-dev  把 host 專案資料夾 bind mount 到 /workspace，適合開乾淨環境。
+opencode-vm   建立常駐 container，/workspace 是 Docker named volume。
+```
+
+安裝或更新後會同時註冊 `opencode-dev` 與 `opencode-vm` shell function。
+`opencode-vm` 使用獨立的 VM image，建置在 opencode-dev base image 之上，並額外包含常駐工作機常用工具，例如 ssh client/server、tmux、rsync、process/network utilities。
+
+最簡使用預設 VM：
+
+```bash
+opencode-vm create
+opencode-vm import ./project
+opencode-vm start
+opencode-vm run -- "請檢查 /workspace"
+opencode-vm dump ./opencode-vm-output
+opencode-vm stop
+```
+
+開啟 Web UI：
+
+```text
+http://localhost:8001
+```
+
+`opencode-vm` 支援多台具名 VM；不指定名稱時使用 `default`。
+VM 內的 Linux 使用者會命名為 `opencode-vm-<name>`，例如 `opencode-vm-main`，方便在 shell prompt 或 `whoami` 中辨識目前所在環境。VM 名稱需使用小寫英數、dot、underscore、hyphen，且長度不超過 20 字元。
+
+```bash
+opencode-vm create main
+opencode-vm import main ./project
+opencode-vm start main --port 8002
+opencode-vm shell main
+opencode-vm run main -- "請執行測試"
+opencode-vm dump main ./main-output
+```
+
+常用管理指令：
+
+```bash
+opencode-vm list
+opencode-vm status [name]
+opencode-vm logs [name]
+opencode-vm url [name]
+opencode-vm restart [name] [--port N]
+opencode-vm rm [--yes] [name]
+```
+
+`opencode-vm rm` 會刪除該 VM 的 container 與 named volumes，包含 `/workspace` 內容。需要保留檔案時，請先執行 `opencode-vm dump`。自動化情境可使用 `--yes` 略過確認。
+
 ## 更新 Image
 
 更新時使用和初次安裝相同的入口：
@@ -241,6 +295,6 @@ docker compose -f .devcontainer/docker-compose.yml stop opencode-web-test
 
 維護者用的 build/update/push/pull script 與操作說明集中在 [admin/README.md](admin/README.md)。
 
-非必要不要更新 OpenCode version。若只是調整 default/base 環境，通常只需要增加 `.devcontainer/image.profile` 的 `ENV_REVISION`，再執行 `./admin/build-image.sh`。
+非必要不要更新 OpenCode version。若只是調整 default/base 環境，通常只需要增加 `.devcontainer/image.profile` 的 `ENV_REVISION`，再執行 `./admin/build-image.sh`。這個 build 會同時產生 opencode-dev base image 與 opencode-vm image。
 
 更完整的設計細節在 [.devcontainer/docs/README.md](.devcontainer/docs/README.md)。

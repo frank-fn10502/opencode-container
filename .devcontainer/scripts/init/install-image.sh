@@ -13,6 +13,8 @@ PROJECT_ROOT="$(cd "${DEVCONTAINER_DIR}/.." && pwd)"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 IMAGE_TAG=""
+VM_IMAGE_TAG=""
+OPENCODE_VM_IMAGE=""
 INSTALL_DIR="${HOME}/.local/bin/opencode-dev-yuta"
 INSTALL_MARKER="${INSTALL_DIR}/.opencode-dev-managed"
 INSTALL_IMAGE_PROFILE="${INSTALL_DIR}/image.profile"
@@ -201,8 +203,71 @@ update_install_metadata() {
 IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
 IMAGE_TAG=${image_tag}
 OPENCODE_DEV_IMAGE=${image_name}
+VM_REVISION=${VM_REVISION:-}
+VM_IMAGE_TAG=${VM_IMAGE_TAG:-}
+OPENCODE_VM_IMAGE=${OPENCODE_VM_IMAGE:-}
 EOF
   printf 'Updated base alias: %s\n' "${base_alias}"
+}
+
+vm_image_ref() {
+  if [[ -n "${OPENCODE_VM_IMAGE:-}" ]]; then
+    printf '%s\n' "${OPENCODE_VM_IMAGE}"
+    return
+  fi
+  if [[ -n "${VM_IMAGE_TAG:-}" ]]; then
+    printf '%s:%s\n' "${IMAGE_REPOSITORY}" "${VM_IMAGE_TAG}"
+  fi
+}
+
+find_vm_image_tar() {
+  local vm_tag="$1"
+  local candidate
+
+  candidate="${PROJECT_ROOT}/.docker_imgs/opencode-dev-yuta-${vm_tag}.tar"
+  if [[ -f "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return
+  fi
+
+  printf 'Required VM image tar not found: .docker_imgs/opencode-dev-yuta-%s.tar\n' "${vm_tag}" >&2
+  exit 1
+}
+
+tar_contains_image_ref() {
+  local tar_path="$1"
+  local image_ref="$2"
+
+  tar -xOf "${tar_path}" manifest.json 2>/dev/null \
+    | grep -F "\"${image_ref}\"" >/dev/null
+}
+
+ensure_vm_image() {
+  local image_ref vm_tag vm_tar
+
+  image_ref="$(vm_image_ref)"
+  if [[ -z "${image_ref}" ]]; then
+    return
+  fi
+
+  if docker image inspect "${image_ref}" >/dev/null 2>&1; then
+    printf 'Docker VM image already exists: %s\n' "${image_ref}"
+    return
+  fi
+
+  vm_tag="${image_ref##*:}"
+  vm_tar="$(find_vm_image_tar "${vm_tag}")"
+  printf 'Found VM image tar: %s\n' "${vm_tar}"
+  if ! tar_contains_image_ref "${vm_tar}" "${image_ref}"; then
+    printf 'VM image tar does not contain the expected image: %s\n' "${image_ref}" >&2
+    exit 1
+  fi
+
+  docker load --input "${vm_tar}" >/dev/null
+  docker image inspect "${image_ref}" >/dev/null
+  docker tag "${image_ref}" "${IMAGE_REPOSITORY}:vm" >/dev/null
+  printf 'Installed VM image: %s\n' "${image_ref}"
+  printf 'Updated VM alias: %s\n' "${IMAGE_REPOSITORY}:vm"
 }
 
 if [[ $# -gt 1 ]]; then
@@ -224,6 +289,7 @@ if [[ -n "${existing_image}" ]]; then
   update_install_metadata "${existing_image}"
   printf 'Docker image already exists: %s\n' "${existing_image}"
   printf 'Skipped image tar load.\n'
+  ensure_vm_image
   exit 0
 fi
 
@@ -267,6 +333,7 @@ docker image inspect "${image_name}" >/dev/null
 update_install_metadata "${image_name}"
 
 printf 'Installed image: %s\n' "${image_name}"
+ensure_vm_image
 if [[ -f "${INSTALL_MARKER}" ]]; then
   printf 'Updated installed image profile: %s\n' "${INSTALL_IMAGE_PROFILE}"
 fi

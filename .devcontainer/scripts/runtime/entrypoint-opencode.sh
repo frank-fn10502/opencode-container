@@ -3,11 +3,34 @@
 set -euo pipefail
 
 OPENCODE_USER="${OPENCODE_USER:-opencode}"
+OPENCODE_BASE_USER="${OPENCODE_BASE_USER:-opencode}"
+OPENCODE_HOME_DIR="${OPENCODE_HOME_DIR:-/home/opencode}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
 
 if [[ -n "${PYTHON_VENV:-}" && -d "${PYTHON_VENV}/bin" ]]; then
-  export PATH="${PYTHON_VENV}/bin:/home/${OPENCODE_USER}/.local/bin:${PATH}"
+  export PATH="${PYTHON_VENV}/bin:${OPENCODE_HOME_DIR}/.local/bin:${PATH}"
 fi
+
+ensure_opencode_user() {
+  if id -u "${OPENCODE_USER}" >/dev/null 2>&1; then
+    return
+  fi
+
+  if ! id -u "${OPENCODE_BASE_USER}" >/dev/null 2>&1; then
+    echo "[opencode-entrypoint] user not found: ${OPENCODE_USER}" >&2
+    exit 1
+  fi
+
+  if getent group "${OPENCODE_BASE_USER}" >/dev/null 2>&1 \
+    && ! getent group "${OPENCODE_USER}" >/dev/null 2>&1; then
+    groupmod -n "${OPENCODE_USER}" "${OPENCODE_BASE_USER}"
+  fi
+
+  usermod -l "${OPENCODE_USER}" -d "${OPENCODE_HOME_DIR}" "${OPENCODE_BASE_USER}"
+  usermod -aG sudo "${OPENCODE_USER}" >/dev/null 2>&1 || true
+  echo "${OPENCODE_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${OPENCODE_USER}"
+  chmod 0440 "/etc/sudoers.d/${OPENCODE_USER}"
+}
 
 find_available_uid() {
   local uid_candidate
@@ -28,6 +51,11 @@ sync_workspace_identity() {
   local existing_user existing_group
 
   if [[ ! -e "${WORKSPACE_DIR}" ]]; then
+    return
+  fi
+
+  if [[ "${OPENCODE_INIT_WORKSPACE_OWNERSHIP:-}" == "1" ]]; then
+    chown -R "${OPENCODE_USER}:${OPENCODE_USER}" "${WORKSPACE_DIR}" >/dev/null 2>&1 || true
     return
   fi
 
@@ -71,10 +99,12 @@ sync_workspace_identity() {
     fi
   fi
 
-  chown -R "${OPENCODE_USER}:$(id -gn "${OPENCODE_USER}")" "/home/${OPENCODE_USER}" >/dev/null 2>&1 || true
+  chown -R "${OPENCODE_USER}:$(id -gn "${OPENCODE_USER}")" "${OPENCODE_HOME_DIR}" >/dev/null 2>&1 || true
 }
 
 if [[ "$(id -u)" -eq 0 ]]; then
+  ensure_opencode_user
+
   if [[ "$#" -gt 0 ]]; then
     resolved_command="$(command -v "$1" 2>/dev/null || true)"
     if [[ -n "${resolved_command}" ]]; then
@@ -83,7 +113,7 @@ if [[ "$(id -u)" -eq 0 ]]; then
   fi
 
   sync_workspace_identity
-  exec sudo -EHu "${OPENCODE_USER}" env PATH="${PATH}" "$@"
+  exec sudo -EHu "${OPENCODE_USER}" env HOME="${OPENCODE_HOME_DIR}" PATH="${PATH}" "$@"
 fi
 
 exec "$@"

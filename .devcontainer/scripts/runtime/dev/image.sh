@@ -4,8 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=common.sh
-source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=../common.sh
+source "${SCRIPT_DIR}/../common.sh"
 
 image_usage() {
   cat <<'USAGE'
@@ -51,12 +51,16 @@ append_note() {
 
 image_note() {
   local image="$1"
-  local current_image base_alias current_id base_alias_id image_id in_use notes
+  local current_image base_alias vm_image vm_alias current_id base_alias_id vm_id vm_alias_id image_id in_use notes
 
   current_image="$(base_image_ref)"
   base_alias="$(base_alias_ref)"
+  vm_image="$(vm_image_ref 2>/dev/null || true)"
+  vm_alias="$(vm_alias_ref)"
   current_id="$(image_full_id "${current_image}")"
   base_alias_id="$(image_full_id "${base_alias}")"
+  vm_id="$(image_full_id "${vm_image}")"
+  vm_alias_id="$(image_full_id "${vm_alias}")"
   image_id="$(image_full_id "${image}")"
   in_use="$(image_in_use_count "${image}")"
   notes=""
@@ -73,6 +77,20 @@ image_note() {
     notes="$(append_note "${notes}" "base-alias")"
     if [[ -n "${current_id}" && "${image_id}" == "${current_id}" ]]; then
       notes="$(append_note "${notes}" "current=${current_image}")"
+    fi
+  fi
+  if [[ -n "${vm_image}" && "${image}" == "${vm_image}" ]]; then
+    notes="$(append_note "${notes}" "protected")"
+    notes="$(append_note "${notes}" "current-vm")"
+    if [[ -n "${vm_alias_id}" && "${image_id}" == "${vm_alias_id}" ]]; then
+      notes="$(append_note "${notes}" "alias=${vm_alias}")"
+    fi
+  fi
+  if [[ "${image}" == "${vm_alias}" ]]; then
+    notes="$(append_note "${notes}" "protected")"
+    notes="$(append_note "${notes}" "vm-alias")"
+    if [[ -n "${vm_id}" && "${image_id}" == "${vm_id}" ]]; then
+      notes="$(append_note "${notes}" "current=${vm_image}")"
     fi
   fi
   if [[ "${in_use}" != "0" ]]; then
@@ -153,7 +171,7 @@ confirm_image_rm() {
 rm_image() {
   local assume_yes=0
   local image=""
-  local current_image base_alias current_id base_alias_id image_id
+  local current_image base_alias vm_image vm_alias current_id base_alias_id vm_id vm_alias_id image_id
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -197,8 +215,12 @@ rm_image() {
 
   current_image="$(base_image_ref)"
   base_alias="$(base_alias_ref)"
+  vm_image="$(vm_image_ref 2>/dev/null || true)"
+  vm_alias="$(vm_alias_ref)"
   current_id="$(image_full_id "${current_image}")"
   base_alias_id="$(image_full_id "${base_alias}")"
+  vm_id="$(image_full_id "${vm_image}")"
+  vm_alias_id="$(image_full_id "${vm_alias}")"
   image_id="$(image_full_id "${image}")"
   if [[ "${image}" == "${current_image}" ]]; then
     printf 'Refusing to remove current base image: %s\n' "${image}" >&2
@@ -214,6 +236,24 @@ rm_image() {
     printf 'Reason: this Docker image is the stable base alias for opencode virtual environments.\n' >&2
     if [[ -n "${current_id}" && "${image_id}" == "${current_id}" ]]; then
       printf 'Relation: %s and %s refer to the same Docker image.\n' "${base_alias}" "${current_image}" >&2
+    fi
+    printf 'Remove an older image tag instead.\n' >&2
+    exit 2
+  fi
+  if [[ -n "${vm_image}" && "${image}" == "${vm_image}" ]]; then
+    printf 'Refusing to remove current VM image: %s\n' "${image}" >&2
+    printf 'Reason: this Docker image is used by opencode-vm.\n' >&2
+    if [[ -n "${vm_alias_id}" && "${image_id}" == "${vm_alias_id}" ]]; then
+      printf 'Relation: %s and %s refer to the same Docker image.\n' "${vm_image}" "${vm_alias}" >&2
+    fi
+    printf 'Remove an older image tag instead.\n' >&2
+    exit 2
+  fi
+  if [[ "${image}" == "${vm_alias}" ]]; then
+    printf 'Refusing to remove VM alias: %s\n' "${image}" >&2
+    printf 'Reason: this Docker image is the stable VM alias for opencode-vm.\n' >&2
+    if [[ -n "${vm_id}" && "${image_id}" == "${vm_id}" ]]; then
+      printf 'Relation: %s and %s refer to the same Docker image.\n' "${vm_alias}" "${vm_image}" >&2
     fi
     printf 'Remove an older image tag instead.\n' >&2
     exit 2

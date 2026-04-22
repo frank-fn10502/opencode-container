@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-INSTALL_OR_SCRIPTS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+COMMON_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_OR_SCRIPTS_DIR="$(cd "${COMMON_SCRIPT_DIR}/.." && pwd)"
 if [[ -f "${INSTALL_OR_SCRIPTS_DIR}/docker-compose.yml" ]]; then
   DEVCONTAINER_DIR="${INSTALL_OR_SCRIPTS_DIR}"
 else
-  DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+  DEVCONTAINER_DIR="$(cd "${COMMON_SCRIPT_DIR}/../.." && pwd)"
 fi
 
 COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
@@ -28,6 +29,8 @@ IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 PROJECT_IMAGE_REPOSITORY="localhost/opencode-dev-yuta"
 DEFAULT_PROFILE="default"
 IMAGE_TAG=""
+VM_IMAGE_TAG=""
+OPENCODE_VM_IMAGE=""
 
 if [[ -f "${IMAGE_PROFILE}" ]]; then
   # shellcheck source=/dev/null
@@ -64,6 +67,23 @@ base_alias_ref() {
   printf '%s:base\n' "${IMAGE_REPOSITORY}"
 }
 
+vm_image_ref() {
+  local image
+
+  image="$(sed -n 's/^OPENCODE_VM_IMAGE=//p' "${IMAGE_PROFILE}" | head -n 1)"
+  if [[ -z "${image}" ]]; then
+    printf 'image.profile does not contain OPENCODE_VM_IMAGE: %s\n' "${IMAGE_PROFILE}" >&2
+    printf 'Build the release images with: ./admin/build-image.sh\n' >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${image}"
+}
+
+vm_alias_ref() {
+  printf '%s:vm\n' "${IMAGE_REPOSITORY}"
+}
+
 ensure_base_alias() {
   local base_image base_alias
 
@@ -77,6 +97,23 @@ ensure_base_alias() {
 
   printf 'Docker image not found: %s\n' "${base_image}" >&2
   printf 'Run ./init.sh after placing the image tar under .docker_imgs/.\n' >&2
+  exit 1
+}
+
+ensure_vm_image() {
+  local image
+
+  ensure_image_profile
+  ensure_base_alias
+  image="$(vm_image_ref)"
+
+  if docker image inspect "${image}" >/dev/null 2>&1; then
+    return
+  fi
+
+  printf 'Docker VM image not found: %s\n' "${image}" >&2
+  printf 'Build the release images with: ./admin/build-image.sh\n' >&2
+  printf 'Or place the matching tar under .docker_imgs/ and rerun ./init.sh.\n' >&2
   exit 1
 }
 

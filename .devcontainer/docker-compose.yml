@@ -71,6 +71,40 @@ services:
       - opencode-web-test-home-yuta:/home/opencode/.local/share/opencode
       - opencode-web-test-state-yuta:/home/opencode/.local/state
 
+  opencode-vm:
+    image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
+    container_name: ${OPENCODE_VM_CONTAINER:-opencode-vm-yuta-default}
+    pull_policy: never
+    user: root
+    entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
+    working_dir: /workspace
+    command:
+      - bash
+      - -lc
+      - |
+        opencode serve --hostname 0.0.0.0 --port 8001 --print-logs &
+        wait
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-}
+      OPENCODE_USER: ${OPENCODE_VM_USER:-opencode-vm-default}
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      OPENCODE_ENABLE_EXA: "1"
+      OPENCODE_INIT_WORKSPACE_OWNERSHIP: "1"
+    ports:
+      - "${OPENCODE_VM_PORT:-8001}:8001"
+    volumes:
+      - opencode-vm-workspace:/workspace
+      - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
+      - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - ./config/AGENTS.md:/home/opencode/.config/opencode/AGENTS.md:ro
+      - ./config/command:/home/opencode/.config/opencode/command:ro
+      - opencode-vm-opencode-home:/home/opencode/.local/share/opencode
+      - opencode-vm-state:/home/opencode/.local/state
+      - opencode-vm-cache:/home/opencode/.cache
+
 volumes:
   opencode-home-yuta:
     name: opencode-home-yuta
@@ -80,3 +114,11 @@ volumes:
   opencode-cpp-runner-local-state-yuta:
   opencode-web-test-home-yuta:
   opencode-web-test-state-yuta:
+  opencode-vm-workspace:
+    name: ${OPENCODE_VM_WORKSPACE_VOLUME:-opencode-vm-yuta-workspace-default}
+  opencode-vm-opencode-home:
+    name: ${OPENCODE_VM_OPENCODE_HOME_VOLUME:-opencode-vm-yuta-opencode-home-default}
+  opencode-vm-state:
+    name: ${OPENCODE_VM_STATE_VOLUME:-opencode-vm-yuta-state-default}
+  opencode-vm-cache:
+    name: ${OPENCODE_VM_CACHE_VOLUME:-opencode-vm-yuta-cache-default}
