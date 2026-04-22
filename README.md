@@ -188,9 +188,8 @@ opencode-vm   建立常駐 container，/workspace 是 Docker named volume。
 最簡使用預設 VM：
 
 ```bash
-opencode-vm create
-opencode-vm import --src ./project --dist /workspace/project
 opencode-vm start
+opencode-vm import --src ./project --dist /workspace/project
 opencode-vm run -- "請檢查 /workspace"
 opencode-vm dump --src /workspace --dist ./opencode-vm-output
 opencode-vm dump --src /workspace/project-a --dist ./project-a-output
@@ -203,16 +202,15 @@ opencode-vm stop
 http://localhost:2501
 ```
 
-VM 預設使用 `2500` 作為 port base，Web UI 與 SSH 會分別使用 `2501` 與 `2502`。如果任一 port 已被占用，`opencode-vm` 會整組往上跳 `+10`，例如 `2511/2512`。互動執行 `create`、`start` 或 `restart` 時會詢問 Web UI port 與 SSH port；直接按 Enter 會套用建議值。非互動環境會直接使用建議值。
+VM 預設使用 `2500` 作為 port base，Web UI 與 SSH 會分別使用 `2501` 與 `2502`。如果任一 port 已被占用，`opencode-vm` 會整組往上跳 `+10`，例如 `2511/2512`。`start` 第一次執行時會建立 volumes 並保存 Web UI/SSH port 設定；之後 `start` 會直接沿用保存的 port，不會再次詢問。`restart` 可用 `--port-base`、`--webui-port`、`--ssh-port` 修改並保存新的 port。
 SSH server 會開在 VM 內的 port 22，host 端使用上面配置的 SSH port；登入金鑰放在 VM 內 `/home/opencode/.ssh/authorized_keys`，該 `.ssh` 目錄會以 named volume 保存。
 
 `opencode-vm` 支援多台具名 VM；不指定名稱時使用 `default`。
 VM 內的 Linux 使用者固定為 `opencode`，主機名稱會命名為 `opencode-vm-<name>`，例如 `opencode-vm-main`，方便在 shell prompt 或 `hostname` 中辨識目前所在環境。VM 名稱需使用小寫英數、dot、underscore、hyphen，且長度不超過 20 字元；dot 與 underscore 會在 hostname 中轉成 hyphen。
 
 ```bash
-opencode-vm create main
-opencode-vm import main --src ./project --dist /workspace/project
 opencode-vm start main --port-base 2510
+opencode-vm import main --src ./project --dist /workspace/project
 opencode-vm shell main
 opencode-vm run main -- "請執行測試"
 opencode-vm dump main --src /workspace --dist ./main-output
@@ -231,6 +229,7 @@ opencode-vm logs [name]
 opencode-vm url [name]
 opencode-vm import [name] --src <host-path> --dist <vm-path>
 opencode-vm dump [name] --src <vm-path> --dist <host-path>
+opencode-vm start [name] [--port-base N] [--webui-port N] [--ssh-port N]
 opencode-vm restart [name] [--port-base N] [--webui-port N] [--ssh-port N]
 opencode-vm rm [--yes] [name]
 ```

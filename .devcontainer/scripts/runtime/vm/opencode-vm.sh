@@ -19,7 +19,6 @@ usage() {
 Usage: opencode-vm <command> [name] [options]
 
 Commands:
-  create [name]              Create the named VM volumes. Default name: default.
   start [name] [--port-base N] [--webui-port N] [--ssh-port N]
                              Start the VM, OpenCode Web UI, and SSH.
   stop [name]                Stop the VM container.
@@ -41,7 +40,6 @@ Commands:
 Examples:
   opencode-vm start
   opencode-vm run -- "請檢查 /workspace"
-  opencode-vm create main
   opencode-vm import main --src ./project --dist /workspace/project
   opencode-vm start main --port-base 2510
 USAGE
@@ -230,14 +228,14 @@ resolve_port_pair() {
   if [[ -n "${requested_base}" ]]; then
     base="${requested_base}"
   elif [[ -n "${stored_webui_port}" && -n "${stored_ssh_port}" ]]; then
-    if container_running "${name}" || [[ ! -t 0 ]]; then
+    base=$((stored_webui_port - 1))
+    if [[ -z "${requested_webui_port}" && -z "${requested_ssh_port}" ]]; then
       VM_PARSED_WEBUI_PORT="${stored_webui_port}"
       VM_PARSED_SSH_PORT="${stored_ssh_port}"
       return
     fi
-    base=$((stored_webui_port - 1))
-    webui_port="${requested_webui_port:-$(prompt_port "Web UI port" "${stored_webui_port}")}"
-    ssh_port="${requested_ssh_port:-$(prompt_port "SSH port" "${stored_ssh_port}")}"
+    webui_port="${requested_webui_port:-${stored_webui_port}}"
+    ssh_port="${requested_ssh_port:-${stored_ssh_port}}"
   else
     base="${VM_DEFAULT_PORT_BASE}"
   fi
@@ -678,7 +676,7 @@ parse_start_args() {
       *)
         if [[ -n "${name}" ]]; then
           printf 'Unexpected positional argument: %s\n' "$1" >&2
-          printf 'Use: [name] --src <path> --dist <path>.\n' >&2
+          printf 'Use: [name] [--port-base N] [--webui-port N] [--ssh-port N].\n' >&2
           exit 2
         fi
         name="$1"
@@ -756,15 +754,6 @@ esac
 shift || true
 
 case "${command_name}" in
-  create)
-    parse_start_args "$@"
-    name="${VM_PARSED_NAME}"
-    ensure_vm_volumes "${name}"
-    write_vm_ports "${name}" "${VM_PARSED_WEBUI_PORT}" "${VM_PARSED_SSH_PORT}"
-    printf 'Created opencode-vm %s.\n' "${name}"
-    printf 'Web UI port: %s\n' "${VM_PARSED_WEBUI_PORT}"
-    printf 'SSH port: %s\n' "${VM_PARSED_SSH_PORT}"
-    ;;
   start)
     parse_start_args "$@"
     start_vm "${VM_PARSED_NAME}" "${VM_PARSED_WEBUI_PORT}" "${VM_PARSED_SSH_PORT}"
