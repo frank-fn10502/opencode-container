@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""Minimal check: can Python run opencode inside the existing Docker runner?"""
+"""Minimal check: can Python run opencode inside the existing opencode-vm runner?"""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 
-CONTAINER_NAME = "devcontainer-opencode-cpp-runner-1"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+VM_SCRIPT = PROJECT_ROOT / ".devcontainer" / "scripts" / "runtime" / "vm" / "opencode-vm.sh"
+VM_NAME = "test-cpp"
 
 
 def main() -> int:
     cmd = [
-        "docker",
-        "exec",
-        "-it",
-        CONTAINER_NAME,
-        "opencode",
+        "bash",
+        str(VM_SCRIPT),
         "run",
+        VM_NAME,
+        "--",
         "--model",
         "ollama/qwen3.5:9b",
         "請回答今天的天氣",

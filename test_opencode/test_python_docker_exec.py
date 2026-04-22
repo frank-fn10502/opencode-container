@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal check: can Python run docker exec against the opencode runner?"""
+"""Minimal check: can Python run docker exec against the opencode-vm test runner?"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-CONTAINER_NAME = "devcontainer-opencode-cpp-runner-1"
+CONTAINER_NAME = "opencode-vm-yuta-test-cpp"
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:

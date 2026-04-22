@@ -475,8 +475,9 @@ run_vm() {
   docker exec -i \
     -u "$(vm_user "${name}")" \
     -e HOME=/home/opencode \
+    -e TZ="${TZ:-Asia/Taipei}" \
     "$(vm_container "${name}")" \
-    opencode run "$*"
+    opencode run "$@"
 }
 
 copy_into_workspace() {
