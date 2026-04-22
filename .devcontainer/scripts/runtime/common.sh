@@ -11,10 +11,10 @@ fi
 COMPOSE_FILE="${DEVCONTAINER_DIR}/docker-compose.yml"
 IMAGE_PROFILE="${DEVCONTAINER_DIR}/image.profile"
 
-if [[ -f "${DEVCONTAINER_DIR}/init/init-opencode-dev.sh" ]]; then
-  INIT_SCRIPT="${DEVCONTAINER_DIR}/init/init-opencode-dev.sh"
+if [[ -f "${DEVCONTAINER_DIR}/init/init-opencode.sh" ]]; then
+  INIT_SCRIPT="${DEVCONTAINER_DIR}/init/init-opencode.sh"
 else
-  INIT_SCRIPT="${DEVCONTAINER_DIR}/scripts/init/init-opencode-dev.sh"
+  INIT_SCRIPT="${DEVCONTAINER_DIR}/scripts/init/init-opencode.sh"
 fi
 
 CONTAINER_NAME="opencode-dev-yuta"

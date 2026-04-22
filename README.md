@@ -30,9 +30,12 @@ tar 只能放在 `.docker_imgs/` 這一層，不支援其他位置。
 1. 讀取 `.devcontainer/image.profile` 取得指定的 image 版本。
 2. 檢查本機 Docker 是否已有該 image；如果沒有，從 `.docker_imgs/` 載入對應 tar。
 3. 安裝 `opencode-dev` runtime 到 `~/.local/bin/opencode-dev-yuta/`。
-4. 在 shell profile 加入 `opencode-dev` function。
+4. 安裝 `opencode-vm` runtime 到同一個工具目錄。
+5. 在 shell profile 加入 `opencode-dev` 與 `opencode-vm` function。
 
-完成後請開新 terminal，或依照 init 輸出的提示 source 對應 profile。
+init 入口是 `./init.sh`，內部會呼叫 `.devcontainer/scripts/init/init-opencode.sh`。這支主 script 只負責協調安裝流程；dev 與 VM 的 runtime payload 分別由 `init-opencode-dev.sh` 與 `init-opencode-vm.sh` 管理。每次 init 都會先移除舊 shell profile block，刪除本工具管理的 `~/.local/bin/opencode-dev-yuta/`，再重建並寫入最新 block，避免舊 script 或舊 command function 殘留。
+
+完成後依照 init 輸出的提示執行 `source "<profile>"`，或開啟新的 terminal，即可使用 `opencode-dev` 與 `opencode-vm`。
 
 ## 使用
 
@@ -255,7 +258,7 @@ opencode-vm rm [--yes] [name]
 - 檢查本機是否已有 `.devcontainer/image.profile` 指定的 exact image。
 - 如果沒有，從 `.docker_imgs/opencode-dev-yuta-${IMAGE_TAG}.tar` 載入。
 - 更新 `localhost/opencode-dev-yuta:base` alias，讓 profile Dockerfile 不需要跟著版本修改 `FROM`。
-- 重新部署 `~/.local/bin/opencode-dev-yuta/` 裡的 runtime scripts。
+- 依序重新部署 `opencode-dev` 與 `opencode-vm` runtime scripts。
 - 保留使用者既有的 Docker volumes 與登入狀態。
 
 ## 維護者

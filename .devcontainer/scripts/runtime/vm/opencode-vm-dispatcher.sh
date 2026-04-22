@@ -8,7 +8,7 @@ OPENCODE_VM_SCRIPT="${INSTALL_DIR}/runtime/vm/opencode-vm.sh"
 
 not_installed() {
   printf '%s\n' "opencode-vm is not installed at ${INSTALL_DIR}." >&2
-  printf '%s\n' "Run init-opencode-dev.sh again to reinstall it." >&2
+  printf '%s\n' "Run ./init.sh again to reinstall it." >&2
   exit 127
 }
 
