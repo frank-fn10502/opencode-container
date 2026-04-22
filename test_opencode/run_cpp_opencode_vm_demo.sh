@@ -10,7 +10,6 @@ PYTHON_SCRIPT="${SCRIPT_DIR}/run_cpp_opencode_monitor.py"
 VM_NAME="test-cpp"
 PORT_BASE="2600"
 MODEL="ollama/qwen3.5:9b"
-TIMEOUT="240"
 ITERATIONS="1"
 VM_DUMP_SOURCE="/workspace/cpptest"
 HOST_DUMP_DIST="${PROJECT_ROOT}/.tmp/cpptest"
@@ -69,7 +68,6 @@ python3 "${PYTHON_SCRIPT}" \
   --skip-setup \
   --workspace-dir "${VM_DUMP_SOURCE}" \
   --model "${MODEL}" \
-  --timeout "${TIMEOUT}" \
   --iterations "${ITERATIONS}"
 
 bash "${VM_SCRIPT}" dump "${VM_NAME}" --src "${VM_DUMP_SOURCE}" --dist "${HOST_DUMP_DIST}"

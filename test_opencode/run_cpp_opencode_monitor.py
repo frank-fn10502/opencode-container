@@ -5,11 +5,9 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import queue
 import signal
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -89,12 +87,6 @@ def parse_args() -> argparse.Namespace:
         help="opencode model, in provider/model format. Default: ollama/qwen3.5:9b.",
     )
     parser.add_argument(
-        "--timeout",
-        type=float,
-        default=240.0,
-        help="Seconds to wait for each opencode call before timing out. Default: 240.",
-    )
-    parser.add_argument(
         "--log-file",
         type=Path,
         default=None,
@@ -126,86 +118,41 @@ def vm_result_path_for(local_path: Path, workspace_dir: str) -> str:
     return f"{workspace_dir.rstrip('/')}/.opencode-test-results/{local_path.name}"
 
 
-def run_command(cmd: list[str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
+def run_command(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
         cwd=PROJECT_ROOT,
         text=True,
         capture_output=True,
-        timeout=timeout,
+        stdin=subprocess.DEVNULL,
         check=False,
     )
 
 
-def run_command_streaming(
-    cmd: list[str], timeout: float | None = None
-) -> subprocess.CompletedProcess[str]:
+def run_command_streaming(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         cmd,
         cwd=PROJECT_ROOT,
         text=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=1,
     )
-    output_queue: queue.Queue[tuple[str, str | None]] = queue.Queue()
-
-    def pump(name: str, stream: object) -> None:
-        try:
-            for line in stream:  # type: ignore[union-attr]
-                output_queue.put((name, line))
-        finally:
-            output_queue.put((name, None))
-
-    stdout_thread = threading.Thread(
-        target=pump, args=("stdout", process.stdout), daemon=True
-    )
-    stderr_thread = threading.Thread(
-        target=pump, args=("stderr", process.stderr), daemon=True
-    )
-    stdout_thread.start()
-    stderr_thread.start()
 
     stdout_parts: list[str] = []
-    stderr_parts: list[str] = []
-    closed_streams: set[str] = set()
-    deadline = time.monotonic() + timeout if timeout is not None else None
 
-    while len(closed_streams) < 2:
-        if deadline is not None:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                process.kill()
-                stdout_thread.join(timeout=1)
-                stderr_thread.join(timeout=1)
-                raise subprocess.TimeoutExpired(
-                    cmd, timeout, output="".join(stdout_parts), stderr="".join(stderr_parts)
-                )
-            queue_timeout = min(0.2, remaining)
-        else:
-            queue_timeout = 0.2
-
-        try:
-            stream_name, line = output_queue.get(timeout=queue_timeout)
-        except queue.Empty:
-            continue
-
-        if line is None:
-            closed_streams.add(stream_name)
-            continue
-
-        if stream_name == "stdout":
-            stdout_parts.append(line)
-            print(line, end="", flush=True)
-        else:
-            stderr_parts.append(line)
-            print(line, end="", file=sys.stderr, flush=True)
+    assert process.stdout is not None
+    for line in process.stdout:
+        stdout_parts.append(line)
+        print(line, end="", flush=True)
 
     return_code = process.wait()
     return subprocess.CompletedProcess(
         cmd,
         return_code,
         stdout="".join(stdout_parts),
-        stderr="".join(stderr_parts),
+        stderr="",
     )
 
 
@@ -228,7 +175,6 @@ def ensure_runner(vm_name: str, port_base: int, skip_setup: bool) -> str:
                 "--port-base",
                 str(port_base),
             ],
-            timeout=None,
         )
 
     if status.returncode != 0:
@@ -252,10 +198,30 @@ def read_vm_file(vm_name: str, vm_path: str) -> str:
     return result.stdout
 
 
+def cleanup_opencode_run(vm_name: str) -> None:
+    run_command(
+        [
+            "bash",
+            str(VM_SCRIPT),
+            "exec",
+            vm_name,
+            "--",
+            "sh",
+            "-lc",
+            (
+                "pids=$(ps -eo pid=,cmd= | awk '/[o]pencode run/ {print $1}'); "
+                "if [ -n \"$pids\" ]; then kill -TERM $pids 2>/dev/null || true; fi; "
+                "sleep 1; "
+                "pids=$(ps -eo pid=,cmd= | awk '/[o]pencode run/ {print $1}'); "
+                "if [ -n \"$pids\" ]; then kill -KILL $pids 2>/dev/null || true; fi"
+            ),
+        ],
+    )
+
+
 def run_opencode(
     vm_name: str,
     model: str,
-    timeout: float,
     result_path: Path,
     workspace_dir: str,
 ) -> subprocess.CompletedProcess[str]:
@@ -274,7 +240,7 @@ def run_opencode(
         prompt,
     ]
     print("running opencode inside opencode-vm; streaming output below...", flush=True)
-    return run_command_streaming(cmd, timeout=timeout)
+    return run_command_streaming(cmd)
 
 
 def main() -> int:
@@ -300,6 +266,7 @@ def main() -> int:
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
+    cleanup_opencode_run(args.vm_name)
 
     run_count = 0
     while not stop_requested:
@@ -322,7 +289,6 @@ def main() -> int:
             result = run_opencode(
                 args.vm_name,
                 args.model,
-                args.timeout,
                 result_path,
                 args.workspace_dir,
             )
@@ -354,20 +320,6 @@ def main() -> int:
                     )
                 write_report(result_path, "".join(fallback_lines))
             print(f"wrote opencode response to {result_path}", flush=True)
-        except subprocess.TimeoutExpired as exc:
-            finished_at = now_in_taiwan()
-            section = (
-                header
-                + f"- Exit code: `timeout`\n"
-                + f"- Finished: `{finished_at.isoformat(timespec='seconds')}`\n\n"
-                + f"opencode timed out after {args.timeout} seconds.\n"
-            )
-            if exc.stdout:
-                section += "\n### stdout\n\n```text\n" + exc.stdout.strip() + "\n```\n"
-            if exc.stderr:
-                section += "\n### stderr\n\n```text\n" + exc.stderr.strip() + "\n```\n"
-            write_report(result_path, section)
-            print(f"opencode timed out; wrote details to {result_path}", file=sys.stderr)
         except RuntimeError as exc:
             write_report(result_path, header + f"- Exit code: `runner-error`\n\n{exc}\n")
             print(str(exc), file=sys.stderr)

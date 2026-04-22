@@ -474,7 +474,16 @@ run_vm() {
     printf 'Missing prompt for opencode-vm run.\n' >&2
     exit 2
   fi
-  docker exec -i \
+  if [[ -t 1 ]]; then
+    docker exec -t \
+      -u "$(vm_user "${name}")" \
+      -e HOME=/home/opencode \
+      -e TZ="${TZ:-Asia/Taipei}" \
+      "$(vm_container "${name}")" \
+      opencode run "$@"
+    return
+  fi
+  docker exec \
     -u "$(vm_user "${name}")" \
     -e HOME=/home/opencode \
     -e TZ="${TZ:-Asia/Taipei}" \

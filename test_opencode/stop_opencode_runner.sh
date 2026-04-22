@@ -49,7 +49,7 @@ fi
 
 if docker inspect -f '{{.State.Running}}' "${container}" 2>/dev/null | grep -qx true; then
   docker exec "${container}" sh -lc \
-    "pkill -TERM -f 'opencode.* run ' 2>/dev/null || true; sleep 1; pkill -KILL -f 'opencode.* run ' 2>/dev/null || true" || true
+    "pids=\$(ps -eo pid=,cmd= | awk '/[o]pencode run/ {print \$1}'); if [ -n \"\$pids\" ]; then kill -TERM \$pids 2>/dev/null || true; fi; sleep 1; pids=\$(ps -eo pid=,cmd= | awk '/[o]pencode run/ {print \$1}'); if [ -n \"\$pids\" ]; then kill -KILL \$pids 2>/dev/null || true; fi" || true
 fi
 
 if [[ "${remove_container}" -eq 1 ]]; then
