@@ -74,6 +74,7 @@ services:
   opencode-vm:
     image: ${OPENCODE_DEV_IMAGE:?Set OPENCODE_DEV_IMAGE to localhost/opencode-dev-yuta:<version>}
     container_name: ${OPENCODE_VM_CONTAINER:-opencode-vm-yuta-default}
+    hostname: ${OPENCODE_VM_HOSTNAME:-opencode-vm-default}
     pull_policy: never
     user: root
     entrypoint: ["/usr/local/bin/entrypoint-opencode.sh"]
@@ -82,6 +83,8 @@ services:
       - bash
       - -lc
       - |
+        sudo mkdir -p /run/sshd
+        sudo /usr/sbin/sshd
         opencode serve --hostname 0.0.0.0 --port 8001 --print-logs &
         wait
     extra_hosts:
@@ -89,12 +92,12 @@ services:
     environment:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-}
-      OPENCODE_USER: ${OPENCODE_VM_USER:-opencode-vm-default}
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       OPENCODE_ENABLE_EXA: "1"
       OPENCODE_INIT_WORKSPACE_OWNERSHIP: "1"
     ports:
-      - "${OPENCODE_VM_PORT:-8001}:8001"
+      - "${OPENCODE_VM_WEBUI_PORT:-2501}:8001"
+      - "${OPENCODE_VM_SSH_PORT:-2502}:22"
     volumes:
       - opencode-vm-workspace:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
@@ -104,6 +107,7 @@ services:
       - opencode-vm-opencode-home:/home/opencode/.local/share/opencode
       - opencode-vm-state:/home/opencode/.local/state
       - opencode-vm-cache:/home/opencode/.cache
+      - opencode-vm-ssh:/home/opencode/.ssh
 
 volumes:
   opencode-home-yuta:
@@ -115,10 +119,17 @@ volumes:
   opencode-web-test-home-yuta:
   opencode-web-test-state-yuta:
   opencode-vm-workspace:
+    external: true
     name: ${OPENCODE_VM_WORKSPACE_VOLUME:-opencode-vm-yuta-workspace-default}
   opencode-vm-opencode-home:
+    external: true
     name: ${OPENCODE_VM_OPENCODE_HOME_VOLUME:-opencode-vm-yuta-opencode-home-default}
   opencode-vm-state:
+    external: true
     name: ${OPENCODE_VM_STATE_VOLUME:-opencode-vm-yuta-state-default}
   opencode-vm-cache:
+    external: true
     name: ${OPENCODE_VM_CACHE_VOLUME:-opencode-vm-yuta-cache-default}
+  opencode-vm-ssh:
+    external: true
+    name: ${OPENCODE_VM_SSH_VOLUME:-opencode-vm-yuta-ssh-default}

@@ -56,6 +56,10 @@ sync_workspace_identity() {
 
   if [[ "${OPENCODE_INIT_WORKSPACE_OWNERSHIP:-}" == "1" ]]; then
     chown -R "${OPENCODE_USER}:${OPENCODE_USER}" "${WORKSPACE_DIR}" >/dev/null 2>&1 || true
+    chown -R "${OPENCODE_USER}:$(id -gn "${OPENCODE_USER}")" \
+      "${OPENCODE_HOME_DIR}/.local" \
+      "${OPENCODE_HOME_DIR}/.cache" \
+      "${OPENCODE_HOME_DIR}/.ssh" >/dev/null 2>&1 || true
     return
   fi
 

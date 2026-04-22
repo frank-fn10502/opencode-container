@@ -11,7 +11,8 @@ source "${SCRIPT_DIR}/../dev/profiles.sh"
 
 VM_DEFAULT_NAME="default"
 VM_PREFIX="opencode-vm-yuta"
-VM_INTERNAL_PORT="8001"
+VM_DEFAULT_PORT_BASE="2500"
+VM_PORT_STEP="10"
 
 usage() {
   cat <<'USAGE'
@@ -19,9 +20,11 @@ Usage: opencode-vm <command> [name] [options]
 
 Commands:
   create [name]              Create the named VM volumes. Default name: default.
-  start [name] [--port N]    Start the VM and OpenCode Web UI.
+  start [name] [--port-base N] [--webui-port N] [--ssh-port N]
+                             Start the VM, OpenCode Web UI, and SSH.
   stop [name]                Stop the VM container.
-  restart [name] [--port N]  Restart the VM.
+  restart [name] [--port-base N] [--webui-port N] [--ssh-port N]
+                             Restart the VM.
   status [name]              Show VM container status.
   list                       List opencode-vm containers and volumes.
   logs [name]                Stream VM logs.
@@ -38,7 +41,7 @@ Examples:
   opencode-vm run -- "請檢查 /workspace"
   opencode-vm create main
   opencode-vm import main ./project
-  opencode-vm start main --port 8002
+  opencode-vm start main --port-base 2510
 USAGE
 }
 
@@ -55,7 +58,7 @@ validate_vm_name() {
 
   if [[ "${#name}" -gt 20 ]]; then
     printf 'Invalid VM name: %s\n' "${name}" >&2
-    printf 'Use 20 characters or fewer so the container user can be named opencode-vm-<name>.\n' >&2
+    printf 'Use 20 characters or fewer so the container hostname can be named opencode-vm-<name>.\n' >&2
     exit 2
   fi
 }
@@ -71,8 +74,14 @@ vm_container() {
   printf '%s-%s\n' "${VM_PREFIX}" "$1"
 }
 
+vm_hostname() {
+  local name="$1"
+
+  printf 'opencode-vm-%s\n' "${name//[._]/-}"
+}
+
 vm_user() {
-  printf 'opencode-vm-%s\n' "$1"
+  printf 'opencode\n'
 }
 
 vm_workspace_volume() {
@@ -91,6 +100,10 @@ vm_cache_volume() {
   printf '%s-cache-%s\n' "${VM_PREFIX}" "$1"
 }
 
+vm_ssh_volume() {
+  printf '%s-ssh-%s\n' "${VM_PREFIX}" "$1"
+}
+
 vm_port_file() {
   printf '%s/vm-%s.env\n' "${USER_CONFIG_DIR}" "$1"
 }
@@ -101,22 +114,33 @@ stored_vm_port() {
 
   file="$(vm_port_file "${name}")"
   if [[ -f "${file}" ]]; then
-    sed -n 's/^PORT=//p' "${file}" | head -n 1
+    sed -n 's/^WEBUI_PORT=//p' "${file}" | head -n 1
     return
   fi
-
-  printf '%s\n' "${VM_INTERNAL_PORT}"
 }
 
-write_vm_port() {
+stored_vm_ssh_port() {
   local name="$1"
-  local port="$2"
+  local file
+
+  file="$(vm_port_file "${name}")"
+  if [[ -f "${file}" ]]; then
+    sed -n 's/^SSH_PORT=//p' "${file}" | head -n 1
+    return
+  fi
+}
+
+write_vm_ports() {
+  local name="$1"
+  local webui_port="$2"
+  local ssh_port="$3"
   local file
 
   mkdir -p "${USER_CONFIG_DIR}"
   file="$(vm_port_file "${name}")"
   cat > "${file}" <<EOF
-PORT=${port}
+WEBUI_PORT=${webui_port}
+SSH_PORT=${ssh_port}
 EOF
 }
 
@@ -135,24 +159,137 @@ validate_port() {
   fi
 }
 
+port_in_use() {
+  local port="$1"
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+    return
+  fi
+
+  if command -v nc >/dev/null 2>&1; then
+    nc -z 127.0.0.1 "${port}" >/dev/null 2>&1
+    return
+  fi
+
+  return 1
+}
+
+find_available_port_pair() {
+  local base="$1"
+  local webui_port ssh_port
+
+  validate_port "${base}"
+  while true; do
+    webui_port=$((base + 1))
+    ssh_port=$((base + 2))
+    validate_port "${webui_port}"
+    validate_port "${ssh_port}"
+    if ! port_in_use "${webui_port}" && ! port_in_use "${ssh_port}"; then
+      VM_SUGGESTED_WEBUI_PORT="${webui_port}"
+      VM_SUGGESTED_SSH_PORT="${ssh_port}"
+      return
+    fi
+    base=$((base + VM_PORT_STEP))
+  done
+}
+
+prompt_port() {
+  local label="$1"
+  local default_port="$2"
+  local answer
+
+  if [[ ! -t 0 ]]; then
+    printf '%s\n' "${default_port}"
+    return
+  fi
+
+  printf '%s [%s]: ' "${label}" "${default_port}" >&2
+  read -r answer
+  if [[ -z "${answer}" ]]; then
+    printf '%s\n' "${default_port}"
+    return
+  fi
+  validate_port "${answer}"
+  printf '%s\n' "${answer}"
+}
+
+resolve_port_pair() {
+  local name="$1"
+  local requested_base="$2"
+  local requested_webui_port="$3"
+  local requested_ssh_port="$4"
+  local stored_webui_port stored_ssh_port base
+  local webui_port ssh_port
+
+  stored_webui_port="$(stored_vm_port "${name}")"
+  stored_ssh_port="$(stored_vm_ssh_port "${name}")"
+
+  if [[ -n "${requested_base}" ]]; then
+    base="${requested_base}"
+  elif [[ -n "${stored_webui_port}" && -n "${stored_ssh_port}" ]]; then
+    if container_running "${name}" || [[ ! -t 0 ]]; then
+      VM_PARSED_WEBUI_PORT="${stored_webui_port}"
+      VM_PARSED_SSH_PORT="${stored_ssh_port}"
+      return
+    fi
+    base=$((stored_webui_port - 1))
+    webui_port="${requested_webui_port:-$(prompt_port "Web UI port" "${stored_webui_port}")}"
+    ssh_port="${requested_ssh_port:-$(prompt_port "SSH port" "${stored_ssh_port}")}"
+  else
+    base="${VM_DEFAULT_PORT_BASE}"
+  fi
+
+  if [[ -z "${webui_port:-}" && -n "${requested_webui_port}" && -n "${requested_ssh_port}" ]]; then
+    webui_port="${requested_webui_port}"
+    ssh_port="${requested_ssh_port}"
+  elif [[ -z "${webui_port:-}" ]]; then
+    find_available_port_pair "${base}"
+    webui_port="${requested_webui_port:-$(prompt_port "Web UI port" "${VM_SUGGESTED_WEBUI_PORT}")}"
+    ssh_port="${requested_ssh_port:-$(prompt_port "SSH port" "${VM_SUGGESTED_SSH_PORT}")}"
+  fi
+
+  validate_port "${webui_port}"
+  validate_port "${ssh_port}"
+  if [[ "${webui_port}" == "${ssh_port}" ]]; then
+    printf 'Web UI port and SSH port must be different: %s\n' "${webui_port}" >&2
+    exit 2
+  fi
+
+  if port_in_use "${webui_port}" || port_in_use "${ssh_port}"; then
+    printf 'Requested ports are not both available: webui=%s ssh=%s\n' "${webui_port}" "${ssh_port}" >&2
+    find_available_port_pair "${base}"
+    webui_port="${VM_SUGGESTED_WEBUI_PORT}"
+    ssh_port="${VM_SUGGESTED_SSH_PORT}"
+    printf 'Using next available VM port pair: webui=%s ssh=%s\n' "${webui_port}" "${ssh_port}" >&2
+  fi
+
+  VM_PARSED_WEBUI_PORT="${webui_port}"
+  VM_PARSED_SSH_PORT="${ssh_port}"
+}
+
 compose_vm() {
   local name="$1"
-  local port="$2"
-  shift 2
+  local webui_port="$2"
+  local ssh_port="$3"
+  shift 3
 
   ensure_image_profile
   ensure_vm_image
   ensure_user_config
 
   OPENCODE_DEV_IMAGE="$(vm_image_ref)" \
+  OPENCODE_DEV_WORKSPACE="/tmp" \
   OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
   OPENCODE_VM_CONTAINER="$(vm_container "${name}")" \
-  OPENCODE_VM_USER="$(vm_user "${name}")" \
+  OPENCODE_VM_HOSTNAME="$(vm_hostname "${name}")" \
   OPENCODE_VM_WORKSPACE_VOLUME="$(vm_workspace_volume "${name}")" \
   OPENCODE_VM_OPENCODE_HOME_VOLUME="$(vm_opencode_home_volume "${name}")" \
   OPENCODE_VM_STATE_VOLUME="$(vm_state_volume "${name}")" \
   OPENCODE_VM_CACHE_VOLUME="$(vm_cache_volume "${name}")" \
-  OPENCODE_VM_PORT="${port}" \
+  OPENCODE_VM_SSH_VOLUME="$(vm_ssh_volume "${name}")" \
+  OPENCODE_VM_WEBUI_PORT="${webui_port}" \
+  OPENCODE_VM_SSH_PORT="${ssh_port}" \
   docker compose \
     --env-file "${IMAGE_PROFILE}" \
     --project-name "${VM_PREFIX}-${name}" \
@@ -179,17 +316,20 @@ ensure_vm_volumes() {
   docker volume create "$(vm_opencode_home_volume "${name}")" >/dev/null
   docker volume create "$(vm_state_volume "${name}")" >/dev/null
   docker volume create "$(vm_cache_volume "${name}")" >/dev/null
+  docker volume create "$(vm_ssh_volume "${name}")" >/dev/null
 }
 
 start_vm() {
   local name="$1"
-  local port="$2"
+  local webui_port="$2"
+  local ssh_port="$3"
 
   ensure_vm_volumes "${name}"
-  write_vm_port "${name}" "${port}"
-  compose_vm "${name}" "${port}" up -d --no-deps opencode-vm
+  write_vm_ports "${name}" "${webui_port}" "${ssh_port}"
+  compose_vm "${name}" "${webui_port}" "${ssh_port}" up -d --no-deps opencode-vm
   printf 'Started opencode-vm %s.\n' "${name}"
-  printf 'Web UI: http://localhost:%s\n' "${port}"
+  printf 'Web UI: http://localhost:%s\n' "${webui_port}"
+  printf 'SSH: ssh -p %s opencode@localhost\n' "${ssh_port}"
 }
 
 stop_vm() {
@@ -215,7 +355,8 @@ rm_vm() {
     "$(vm_workspace_volume "${name}")" \
     "$(vm_opencode_home_volume "${name}")" \
     "$(vm_state_volume "${name}")" \
-    "$(vm_cache_volume "${name}")"
+    "$(vm_cache_volume "${name}")" \
+    "$(vm_ssh_volume "${name}")"
   do
     docker volume rm "${volume}" >/dev/null 2>&1 || true
   done
@@ -289,9 +430,13 @@ ensure_running_vm() {
 
 shell_vm() {
   local name="$1"
+  local docker_exec_flags=(-i)
 
   ensure_running_vm "${name}"
-  docker exec -it \
+  if [[ -t 0 && -t 1 ]]; then
+    docker_exec_flags=(-it)
+  fi
+  docker exec "${docker_exec_flags[@]}" \
     -u "$(vm_user "${name}")" \
     -e HOME=/home/opencode \
     "$(vm_container "${name}")" \
@@ -300,6 +445,7 @@ shell_vm() {
 
 exec_vm() {
   local name="$1"
+  local docker_exec_flags=(-i)
   shift
 
   ensure_running_vm "${name}"
@@ -307,7 +453,10 @@ exec_vm() {
     printf 'Missing command for opencode-vm exec.\n' >&2
     exit 2
   fi
-  docker exec -it \
+  if [[ -t 0 && -t 1 ]]; then
+    docker_exec_flags=(-it)
+  fi
+  docker exec "${docker_exec_flags[@]}" \
     -u "$(vm_user "${name}")" \
     -e HOME=/home/opencode \
     "$(vm_container "${name}")" \
@@ -389,16 +538,37 @@ parse_name_and_rest() {
 parse_start_args() {
   local default_name="${VM_DEFAULT_NAME}"
   local name=""
-  local port=""
+  local port_base=""
+  local webui_port=""
+  local ssh_port=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --port)
+      --webui-port)
         if [[ $# -lt 2 ]]; then
-          printf 'Missing value for --port.\n' >&2
+          printf 'Missing value for --webui-port.\n' >&2
           exit 2
         fi
-        port="$2"
+        webui_port="$2"
+        validate_port "${webui_port}"
+        shift 2
+        ;;
+      --ssh-port)
+        if [[ $# -lt 2 ]]; then
+          printf 'Missing value for --ssh-port.\n' >&2
+          exit 2
+        fi
+        ssh_port="$2"
+        validate_port "${ssh_port}"
+        shift 2
+        ;;
+      --port-base)
+        if [[ $# -lt 2 ]]; then
+          printf 'Missing value for --port-base.\n' >&2
+          exit 2
+        fi
+        port_base="$2"
+        validate_port "${port_base}"
         shift 2
         ;;
       -h|--help)
@@ -421,10 +591,8 @@ parse_start_args() {
   done
 
   name="$(vm_name_or_default "${name:-${default_name}}")"
-  port="${port:-$(stored_vm_port "${name}")}"
-  validate_port "${port}"
+  resolve_port_pair "${name}" "${port_base}" "${webui_port}" "${ssh_port}"
   VM_PARSED_NAME="${name}"
-  VM_PARSED_PORT="${port}"
 }
 
 parse_copy_args() {
@@ -456,18 +624,17 @@ shift || true
 
 case "${command_name}" in
   create)
-    name="$(vm_name_or_default "${1:-${VM_DEFAULT_NAME}}")"
-    if [[ $# -gt 1 ]]; then
-      printf 'Too many arguments for create.\n' >&2
-      exit 2
-    fi
+    parse_start_args "$@"
+    name="${VM_PARSED_NAME}"
     ensure_vm_volumes "${name}"
-    write_vm_port "${name}" "$(stored_vm_port "${name}")"
+    write_vm_ports "${name}" "${VM_PARSED_WEBUI_PORT}" "${VM_PARSED_SSH_PORT}"
     printf 'Created opencode-vm %s.\n' "${name}"
+    printf 'Web UI port: %s\n' "${VM_PARSED_WEBUI_PORT}"
+    printf 'SSH port: %s\n' "${VM_PARSED_SSH_PORT}"
     ;;
   start)
     parse_start_args "$@"
-    start_vm "${VM_PARSED_NAME}" "${VM_PARSED_PORT}"
+    start_vm "${VM_PARSED_NAME}" "${VM_PARSED_WEBUI_PORT}" "${VM_PARSED_SSH_PORT}"
     ;;
   stop)
     name="$(vm_name_or_default "${1:-${VM_DEFAULT_NAME}}")"
@@ -479,7 +646,7 @@ case "${command_name}" in
     if container_exists "${VM_PARSED_NAME}"; then
       docker rm --force "$(vm_container "${VM_PARSED_NAME}")" >/dev/null
     fi
-    start_vm "${VM_PARSED_NAME}" "${VM_PARSED_PORT}"
+    start_vm "${VM_PARSED_NAME}" "${VM_PARSED_WEBUI_PORT}" "${VM_PARSED_SSH_PORT}"
     ;;
   status)
     name="$(vm_name_or_default "${1:-${VM_DEFAULT_NAME}}")"
@@ -536,7 +703,12 @@ case "${command_name}" in
   url)
     name="$(vm_name_or_default "${1:-${VM_DEFAULT_NAME}}")"
     [[ $# -le 1 ]] || { printf 'Too many arguments for url.\n' >&2; exit 2; }
-    printf 'http://localhost:%s\n' "$(stored_vm_port "${name}")"
+    port="$(stored_vm_port "${name}")"
+    if [[ -z "${port}" ]]; then
+      find_available_port_pair "${VM_DEFAULT_PORT_BASE}"
+      port="${VM_SUGGESTED_WEBUI_PORT}"
+    fi
+    printf 'http://localhost:%s\n' "${port}"
     ;;
   *)
     printf 'Unknown opencode-vm command: %s\n' "${command_name}" >&2
