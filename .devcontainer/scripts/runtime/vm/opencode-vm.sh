@@ -281,6 +281,7 @@ compose_vm() {
   OPENCODE_DEV_IMAGE="$(vm_image_ref)" \
   OPENCODE_DEV_WORKSPACE="/tmp" \
   OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
+  OPENCODE_DEV_CONFIG_DIR="${OPENCODE_DEV_CONFIG_DIR}" \
   OPENCODE_VM_CONTAINER="$(vm_container "${name}")" \
   OPENCODE_VM_HOSTNAME="$(vm_hostname "${name}")" \
   OPENCODE_VM_WORKSPACE_VOLUME="$(vm_workspace_volume "${name}")" \

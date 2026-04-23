@@ -32,9 +32,7 @@ services:
     volumes:
       - opencode-vm-workspace:/workspace
       - ${OPENCODE_DEV_USER_CONFIG:?Set OPENCODE_DEV_USER_CONFIG to the user opencode-dev config path}:/opencode-dev/user:ro
-      - ../config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
-      - ../config/AGENTS.md:/home/opencode/.config/opencode/AGENTS.md:ro
-      - ../config/command:/home/opencode/.config/opencode/command:ro
+      - ${OPENCODE_DEV_CONFIG_DIR:?Set OPENCODE_DEV_CONFIG_DIR to the absolute runtime config path}:/home/opencode/.config/opencode
       - opencode-vm-opencode-home:/home/opencode/.local/share/opencode
       - opencode-vm-state:/home/opencode/.local/state
       - opencode-vm-cache:/home/opencode/.cache

@@ -63,6 +63,11 @@ remove_existing_container_if_allowed() {
   remove_container "${id}"
 }
 
+ensure_dev_volumes() {
+  docker volume create opencode-home-yuta >/dev/null
+  docker volume create opencode-state-yuta >/dev/null
+}
+
 compose_run_base() {
   local project_dir="$1"
   local image="$2"
@@ -70,10 +75,12 @@ compose_run_base() {
   shift
 
   ensure_image_profile
+  ensure_dev_volumes
 
   OPENCODE_DEV_IMAGE="${image}" \
   OPENCODE_DEV_WORKSPACE="${project_dir}" \
   OPENCODE_DEV_USER_CONFIG="${USER_CONFIG_DIR}" \
+  OPENCODE_DEV_CONFIG_DIR="${OPENCODE_DEV_CONFIG_DIR}" \
   docker compose \
     --env-file "${IMAGE_PROFILE}" \
     --file "${DEV_COMPOSE_FILE}" \

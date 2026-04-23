@@ -125,7 +125,8 @@ reset_install_dir() {
     "${INSTALL_DIR}/runtime/vm" \
     "${INSTALL_DIR}/init" \
     "${INSTALL_DIR}/compose" \
-    "${INSTALL_DIR}/config"
+    "${INSTALL_DIR}/config" \
+    "${INSTALL_DIR}/profile"
 }
 
 install_common_runtime() {
@@ -140,9 +141,9 @@ install_common_runtime() {
   cp "${INIT_DEVCONTAINER_DIR}/config/opencode.json" "${INSTALL_DIR}/config/opencode.json"
   cp "${INIT_DEVCONTAINER_DIR}/config/AGENTS.md" "${INSTALL_DIR}/config/AGENTS.md"
   cp -R "${INIT_DEVCONTAINER_DIR}/config/command" "${INSTALL_DIR}/config/command"
-  cp "${INIT_DEVCONTAINER_DIR}/config/profile-dockerfile-guide.md" "${INSTALL_DIR}/config/profile-dockerfile-guide.md"
-  cp "${INIT_DEVCONTAINER_DIR}/config/project-profile-readme.md" "${INSTALL_DIR}/config/project-profile-readme.md"
-  cp -R "${INIT_DEVCONTAINER_DIR}/config/user-profiles" "${INSTALL_DIR}/config/user-profiles"
+  cp "${INIT_DEVCONTAINER_DIR}/profile/profile-dockerfile-guide.md" "${INSTALL_DIR}/profile/profile-dockerfile-guide.md"
+  cp "${INIT_DEVCONTAINER_DIR}/profile/project-profile-readme.md" "${INSTALL_DIR}/profile/project-profile-readme.md"
+  cp -R "${INIT_DEVCONTAINER_DIR}/profile/user-profiles" "${INSTALL_DIR}/profile/user-profiles"
   cp "${IMAGE_PROFILE}" "${INSTALL_DIR}/image.profile"
 
   chmod 644 "${INSTALL_DIR}/runtime/common.sh"
